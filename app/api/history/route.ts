@@ -15,7 +15,8 @@ function demoVol(minutes: number): number {
   if (minutes <= 30) return 0.016;
   if (minutes <= 60) return 0.02;
   if (minutes <= 240) return 0.035;
-  return 0.06;
+  if (minutes <= 1440) return 0.06;
+  return 0.09;
 }
 
 /**
@@ -29,7 +30,7 @@ function demoVol(minutes: number): number {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const groupId = searchParams.get("groupId") ?? "";
-  const minutes = Math.max(1, Math.min(1440, Number(searchParams.get("minutes")) || 60));
+  const minutes = Math.max(1, Math.min(10080, Number(searchParams.get("minutes")) || 60));
   if (!GROUP_MAP[groupId]) {
     return NextResponse.json({ error: "존재하지 않는 그룹입니다." }, { status: 400 });
   }

@@ -45,6 +45,18 @@ export default function MarketDetailPage() {
   const poolValue = m.fanReserve + m.shareReserve * price;
   const parent = group.parentGroup ? GROUP_MAP[group.parentGroup] : null;
 
+  // ── 차트 위 요약 카드 데이터 ──────────────────────────
+  // 팬덤 배틀 순위: 팬덤 가치 기준 실제 순위
+  const rank =
+    Object.values(state.markets)
+      .map((mk) => mk.fanReserve / mk.shareReserve)
+      .filter((p) => p > price).length + 1;
+  // 배틀 포인트: 아직 배틀 시스템이 없어 데모 점수 (24h 변동 + 거래량 기반)
+  const battlePts = Math.max(
+    5,
+    Math.min(99.9, 50 + ch24 * 5 + Math.log10(1 + m.volume24h) * 4)
+  );
+
   const stats: [string, string][] = [
     ["팬덤 가치", `Fan$ ${fmtCompact(price * TOTAL_SHARES)}`],
     ["풀 가치", `Fan$ ${fmtCompact(poolValue)}`],
@@ -123,6 +135,39 @@ export default function MarketDetailPage() {
 
           {/* Chart + recent trades */}
           <section className="lg:col-span-8 lg:order-1 flex flex-col gap-5">
+            {/* 차트 위 요약 카드 — 내용 수정은 여기서 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-card px-4 py-3 flex items-center gap-3">
+                <span className="text-lg" aria-hidden>
+                  {ch24 >= 0 ? "📈" : "📉"}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-gray-400 truncate">
+                    오늘 {group.name} Fan Shares
+                  </p>
+                  <p className={`text-sm font-bold ${changeColor(ch24)}`}>
+                    {fmtPct(ch24)} {ch24 >= 0 ? "상승 중" : "하락 중"}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-card px-4 py-3 flex items-center gap-3">
+                <span className="text-lg" aria-hidden>📊</span>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-gray-400 truncate">24시간 거래량</p>
+                  <p className="text-sm font-bold">Fan$ {fmtCompact(m.volume24h)}</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-card px-4 py-3 flex items-center gap-3">
+                <span className="text-lg" aria-hidden>🏆</span>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-gray-400 truncate">오늘의 팬덤 배틀</p>
+                  <p className="text-sm font-bold">
+                    #{rank} · {battlePts.toFixed(1)} pts
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
               <PriceChart groupId={group.id} price={price} />
             </div>
