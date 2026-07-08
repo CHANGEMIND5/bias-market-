@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import UserAvatar from "./UserAvatar";
+import { AVATAR_PRESETS } from "@/lib/avatars";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
@@ -33,12 +35,23 @@ export default function Sidebar({
     state, portfolioValue, totalCost, totalPnl, holdingCount,
     level, levelTitle, xpInLevel, xpPerLevel,
     claimDailyReward, canClaimReward, showToast,
-    userName, userImage, updateName,
+    userName, userImage, updateName, updateAvatar,
   } = useStore();
   const { data: session } = useSession();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+
+  const pickAvatar = async (n: number) => {
+    const r = await updateAvatar(n);
+    if (r.ok) {
+      showToast("success", n === -1 ? "구글 사진으로 되돌렸어요." : "아바타가 변경됐어요!");
+      setAvatarPickerOpen(false);
+    } else {
+      showToast("error", r.error ?? "아바타를 바꿀 수 없습니다.");
+    }
+  };
 
   const displayName = userName ?? session?.user?.name ?? "팬";
   const displayImage = userImage ?? session?.user?.image ?? null;
@@ -71,21 +84,18 @@ export default function Sidebar({
 
       {/* Account */}
       {session?.user ? (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-3.5 flex items-center gap-3">
-          {displayImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={displayImage}
-              alt=""
-              className="w-9 h-9 rounded-full shrink-0"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div
-              className="w-9 h-9 rounded-full shrink-0"
-              style={{ background: "linear-gradient(135deg,#93c5fd,#6ee7b7)" }}
-            />
-          )}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-3.5">
+          <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAvatarPickerOpen((v) => !v)}
+            aria-label="프로필 사진 변경"
+            className="relative shrink-0"
+          >
+            <UserAvatar image={displayImage} size={36} />
+            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gray-900 text-white text-[9px] leading-none grid place-items-center">
+              ✎
+            </span>
+          </button>
           <div className="min-w-0 flex-1">
             {editingName ? (
               <div className="flex items-center gap-1.5">
@@ -140,6 +150,31 @@ export default function Sidebar({
             >
               로그아웃
             </button>
+          )}
+          </div>
+
+          {/* Avatar picker */}
+          {avatarPickerOpen && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <p className="text-[11px] text-gray-400 mb-2">아바타 선택</p>
+              <div className="grid grid-cols-6 gap-2">
+                {AVATAR_PRESETS.map(([a, b], i) => (
+                  <button
+                    key={i}
+                    onClick={() => pickAvatar(i)}
+                    aria-label={`아바타 ${i + 1}`}
+                    className="w-8 h-8 rounded-full hover:scale-110 transition-transform ring-offset-1 hover:ring-2 hover:ring-emerald-300"
+                    style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() => pickAvatar(-1)}
+                className="mt-2.5 w-full py-1.5 rounded-lg border border-gray-200 text-[11px] font-medium text-gray-500 hover:bg-gray-50"
+              >
+                구글 프로필 사진 사용
+              </button>
+            </div>
           )}
         </div>
       ) : (

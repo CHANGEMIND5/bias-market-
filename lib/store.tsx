@@ -39,6 +39,7 @@ interface StoreValue {
   userName: string | null;
   userImage: string | null;
   updateName: (name: string) => Promise<ClaimResult>;
+  updateAvatar: (avatar: number) => Promise<ClaimResult>;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -252,6 +253,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [loggedIn]
   );
 
+  const updateAvatar = useCallback(
+    async (avatar: number): Promise<ClaimResult> => {
+      if (!loggedIn) return { ok: false, error: "로그인이 필요해요." };
+      try {
+        const res = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatar }),
+        });
+        const data = await res.json();
+        if (!data.ok) return { ok: false, error: data.error ?? "아바타를 바꿀 수 없습니다." };
+        setUserImage(data.image ?? null);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "서버에 연결할 수 없습니다." };
+      }
+    },
+    [loggedIn]
+  );
+
   const priceOf = useCallback(
     (groupId: string) => {
       const m = state.markets[groupId];
@@ -278,7 +299,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const level = Math.floor(state.xp / XP_PER_LEVEL) + 1;
 
   const value: StoreValue = {
-    state, hydrated, loggedIn, isAdmin, userName, userImage, updateName,
+    state, hydrated, loggedIn, isAdmin, userName, userImage, updateName, updateAvatar,
     toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,

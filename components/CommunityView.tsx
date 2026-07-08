@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
+import UserAvatar from "./UserAvatar";
 import { useStore } from "@/lib/store";
 
 interface Author {
@@ -42,20 +43,7 @@ function timeAgo(iso: string): string {
 }
 
 function Avatar({ author }: { author: Author }) {
-  return author.image ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={author.image}
-      alt=""
-      className="w-8 h-8 rounded-full shrink-0"
-      referrerPolicy="no-referrer"
-    />
-  ) : (
-    <div
-      className="w-8 h-8 rounded-full shrink-0"
-      style={{ background: "linear-gradient(135deg,#c4b5fd,#f0abfc)" }}
-    />
-  );
+  return <UserAvatar image={author.image} size={32} />;
 }
 
 export default function CommunityView() {
