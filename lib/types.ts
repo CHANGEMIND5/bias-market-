@@ -1,6 +1,10 @@
 export interface Group {
   id: string;
   name: string;
+  /** "group" = 그룹 종목, "member" = 멤버 개인 종목 */
+  category: "group" | "member";
+  /** 멤버 종목일 때 소속 그룹의 id */
+  parentGroup?: string;
   fandom: string;
   debut: string;
   platforms: string;

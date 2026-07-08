@@ -8,6 +8,7 @@ import { GROUPS, GROUP_MAP, TOTAL_SHARES } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
 type Filter = "up" | "down" | "volume" | "name";
+type CatFilter = "all" | "group" | "member";
 
 function pctChange(price: number, baseline: number): number {
   return baseline > 0 ? ((price - baseline) / baseline) * 100 : 0;
@@ -24,6 +25,7 @@ export default function MarketTable({
 }) {
   const { state, toggleFavorite } = useStore();
   const [filter, setFilter] = useState<Filter>("up");
+  const [catFilter, setCatFilter] = useState<CatFilter>("all");
   const [showFavs, setShowFavs] = useState(favoritesOnly);
   const [expanded, setExpanded] = useState(false);
 
@@ -43,6 +45,7 @@ export default function MarketTable({
       };
     });
     let filtered = showFavs || favoritesOnly ? list.filter((r) => r.fav) : list;
+    if (catFilter !== "all") filtered = filtered.filter((r) => r.group.category === catFilter);
     switch (filter) {
       case "up": filtered = [...filtered].sort((a, b) => b.ch24h - a.ch24h); break;
       case "down": filtered = [...filtered].sort((a, b) => a.ch24h - b.ch24h); break;
@@ -53,9 +56,9 @@ export default function MarketTable({
     const byCap = [...list].sort((a, b) => b.marketCap - a.marketCap);
     const rankMap = new Map(byCap.map((r, i) => [r.group.id, i + 1]));
     return filtered.map((r) => ({ ...r, rank: rankMap.get(r.group.id) ?? 0 }));
-  }, [state.markets, state.favorites, filter, showFavs, favoritesOnly]);
+  }, [state.markets, state.favorites, filter, catFilter, showFavs, favoritesOnly]);
 
-  const visible = expanded ? rows : rows.slice(0, 6);
+  const visible = expanded ? rows : rows.slice(0, 10);
 
   const filterBtn = (key: Filter, label: string) => (
     <button
@@ -83,6 +86,27 @@ export default function MarketTable({
           </p>
         </div>
         <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-1 rounded-xl border border-gray-200 p-0.5 mr-1">
+            {(
+              [
+                ["all", "전체"],
+                ["group", "그룹"],
+                ["member", "멤버"],
+              ] as [CatFilter, string][]
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setCatFilter(key)}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  catFilter === key
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {!favoritesOnly && (
             <button
               onClick={() => setShowFavs((v) => !v)}
@@ -158,6 +182,11 @@ export default function MarketTable({
                   <div className="flex items-center gap-2.5">
                     <Emblem group={r.group} size={28} />
                     <span className="font-semibold">{r.group.name}</span>
+                    {r.group.category === "member" && r.group.parentGroup && (
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        {GROUP_MAP[r.group.parentGroup]?.name}
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-2 py-3.5 text-right font-semibold">
@@ -178,7 +207,7 @@ export default function MarketTable({
         </table>
       </div>
 
-      {rows.length > 6 && (
+      {rows.length > 10 && (
         <button
           onClick={() => setExpanded((v) => !v)}
           className="w-full py-3 text-sm text-gray-500 hover:text-gray-700 border-t border-gray-100"

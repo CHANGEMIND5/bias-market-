@@ -1,10 +1,14 @@
 "use client";
 
 import { fmtInt } from "@/lib/format";
+import { GROUP_MAP } from "@/lib/mockData";
 import { Group } from "@/lib/types";
 
 export default function GroupInfoCard({ group }: { group: Group }) {
   const rows: [string, React.ReactNode][] = [
+    ...(group.category === "member" && group.parentGroup
+      ? ([["소속 그룹", GROUP_MAP[group.parentGroup]?.name ?? "-"]] as [string, React.ReactNode][])
+      : []),
     ["데뷔일", group.debut],
     ["팬덤명", group.fandom],
     ["플랫폼", group.platforms],

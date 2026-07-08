@@ -9,100 +9,152 @@ export const FEE_RATE = 0.003; // 0.3% swap fee
 export const MIN_BUY = 10; // minimum buy in Fan$
 export const MIN_SELL = 1; // minimum sell in Fan Shares
 export const INITIAL_POOL = 1_000_000; // 1,000,000 Fan$ + 1,000,000 Fan Shares at price 1
-export const TOTAL_SHARES = 1_000_000; // total Fan Shares per group (for 팬덤 가치)
+export const TOTAL_SHARES = 1_000_000; // total Fan Shares per asset (for 팬덤 가치)
 
-// Every market starts from the spec pool (1,000,000 Fan$ × 1,000,000 Fan Shares,
-// k = 1e12, price = 1 Fan$). `seedPrice` simulates fan trading that already
-// happened before the user arrives: reserves are derived on the constant-product
-// curve as x = INITIAL_POOL·√p, y = INITIAL_POOL/√p so k stays exactly 1e12.
-// Set every seedPrice to 1 if you want all groups to start fresh at 1 Fan$.
+// FAIR START: 모든 종목이 1 Fan$, 거래량 0, 보유자 0에서 똑같이 출발합니다.
+// 랭킹은 오직 팬들의 실제 거래로만 움직여요.
+const FAIR_START_PRICE = 1;
 
 // ─────────────────────────────────────────────────────────────
-// GROUPS — add or remove groups here (no official logos/photos;
-// emblems are abstract CSS gradients defined by `gradient`)
+// GROUP SEEDS — 그룹 추가/삭제는 여기서
 // ─────────────────────────────────────────────────────────────
-export const GROUPS: Group[] = [
-  {
-    id: "bts", name: "BTS", fandom: "ARMY", debut: "2013-06-13",
-    platforms: "Weverse / YouTube / X", followers: 32_450_000,
-    lastComeback: "2025-05-17", status: "활동 중",
-    gradient: ["#a78bfa", "#f0abfc"],
-    seedPrice: 52.34, seedChange1h: -0.21, seedChange24h: 6.28, seedChange7d: 14.35,
-    seedVolume24h: 1_312_450, seedHolders: 128_450,
-  },
-  {
-    id: "blackpink", name: "BLACKPINK", fandom: "BLINK", debut: "2016-08-08",
-    platforms: "YouTube / Instagram / X", followers: 28_930_000,
-    lastComeback: "2025-11-07", status: "활동 중",
-    gradient: ["#f9a8d4", "#111827"],
-    seedPrice: 41.78, seedChange1h: 0.18, seedChange24h: 3.47, seedChange7d: 9.72,
-    seedVolume24h: 1_041_870, seedHolders: 112_030,
-  },
-  {
-    id: "ive", name: "IVE", fandom: "DIVE", debut: "2021-12-01",
-    platforms: "YouTube / Instagram / TikTok", followers: 12_840_000,
-    lastComeback: "2026-02-02", status: "활동 중",
-    gradient: ["#fca5a5", "#fcd34d"],
-    seedPrice: 28.61, seedChange1h: -0.37, seedChange24h: 2.11, seedChange7d: 7.33,
-    seedVolume24h: 778_920, seedHolders: 84_210,
-  },
-  {
-    id: "aespa", name: "aespa", fandom: "MY", debut: "2020-11-17",
-    platforms: "Weverse / YouTube / TikTok", followers: 14_210_000,
-    lastComeback: "2025-10-21", status: "활동 중",
-    gradient: ["#67e8f9", "#818cf8"],
-    seedPrice: 26.14, seedChange1h: 0.41, seedChange24h: -1.24, seedChange7d: 1.88,
-    seedVolume24h: 653_240, seedHolders: 79_540,
-  },
-  {
-    id: "seventeen", name: "SEVENTEEN", fandom: "CARAT", debut: "2015-05-26",
-    platforms: "Weverse / YouTube / X", followers: 18_760_000,
-    lastComeback: "2025-09-29", status: "활동 중",
-    gradient: ["#f9a8d4", "#93c5fd"],
-    seedPrice: 24.87, seedChange1h: 0.12, seedChange24h: 1.63, seedChange7d: 4.21,
-    seedVolume24h: 612_330, seedHolders: 88_760,
-  },
-  {
-    id: "straykids", name: "Stray Kids", fandom: "STAY", debut: "2018-03-25",
-    platforms: "YouTube / Instagram / X", followers: 16_320_000,
-    lastComeback: "2026-01-16", status: "활동 중",
-    gradient: ["#f87171", "#111827"],
-    seedPrice: 22.53, seedChange1h: -0.08, seedChange24h: 2.94, seedChange7d: 6.02,
-    seedVolume24h: 588_410, seedHolders: 82_390,
-  },
-  {
-    id: "twice", name: "TWICE", fandom: "ONCE", debut: "2015-10-20",
-    platforms: "YouTube / Instagram / TikTok", followers: 17_540_000,
-    lastComeback: "2025-12-12", status: "활동 중",
-    gradient: ["#fbcfe8", "#fdba74"],
-    seedPrice: 19.76, seedChange1h: 0.22, seedChange24h: -0.87, seedChange7d: 2.45,
-    seedVolume24h: 501_270, seedHolders: 76_880,
-  },
-  {
-    id: "lesserafim", name: "LE SSERAFIM", fandom: "FEARNOT", debut: "2022-05-02",
-    platforms: "Weverse / YouTube / TikTok", followers: 11_090_000,
-    lastComeback: "2025-08-25", status: "활동 중",
-    gradient: ["#bfdbfe", "#a5b4fc"],
-    seedPrice: 18.92, seedChange1h: -0.12, seedChange24h: 0.94, seedChange7d: -0.55,
-    seedVolume24h: 401_330, seedHolders: 61_420,
-  },
-  {
-    id: "newjeans", name: "NewJeans", fandom: "Bunnies", debut: "2022-07-22",
-    platforms: "YouTube / Instagram / TikTok", followers: 10_870_000,
-    lastComeback: "2025-06-27", status: "활동 중",
-    gradient: ["#93c5fd", "#6ee7b7"],
-    seedPrice: 17.41, seedChange1h: 0.09, seedChange24h: -2.61, seedChange7d: -2.05,
-    seedVolume24h: 396_770, seedHolders: 59_310,
-  },
-  {
-    id: "nmixx", name: "NMIXX", fandom: "NSWER", debut: "2022-02-22",
-    platforms: "YouTube / Instagram / TikTok", followers: 6_420_000,
-    lastComeback: "2026-03-09", status: "활동 중",
-    gradient: ["#c4b5fd", "#5eead4"],
-    seedPrice: 8.42, seedChange1h: 0.31, seedChange24h: 4.12, seedChange7d: 11.08,
-    seedVolume24h: 214_560, seedHolders: 34_050,
-  },
+interface GroupSeed {
+  id: string;
+  name: string;
+  fandom: string;
+  debut: string;
+  platforms: string;
+  followers: number;
+  lastComeback: string;
+  gradient: [string, string];
+}
+
+const GROUP_SEEDS: GroupSeed[] = [
+  { id: "bts", name: "BTS", fandom: "ARMY", debut: "2013-06-13", platforms: "Weverse / YouTube / X", followers: 32_450_000, lastComeback: "2025-05-17", gradient: ["#a78bfa", "#f0abfc"] },
+  { id: "blackpink", name: "BLACKPINK", fandom: "BLINK", debut: "2016-08-08", platforms: "YouTube / Instagram / X", followers: 28_930_000, lastComeback: "2025-11-07", gradient: ["#f9a8d4", "#111827"] },
+  { id: "seventeen", name: "SEVENTEEN", fandom: "CARAT", debut: "2015-05-26", platforms: "Weverse / YouTube / X", followers: 18_760_000, lastComeback: "2025-09-29", gradient: ["#f9a8d4", "#93c5fd"] },
+  { id: "straykids", name: "Stray Kids", fandom: "STAY", debut: "2018-03-25", platforms: "YouTube / Instagram / X", followers: 16_320_000, lastComeback: "2026-01-16", gradient: ["#f87171", "#111827"] },
+  { id: "twice", name: "TWICE", fandom: "ONCE", debut: "2015-10-20", platforms: "YouTube / Instagram / TikTok", followers: 17_540_000, lastComeback: "2025-12-12", gradient: ["#fbcfe8", "#fdba74"] },
+  { id: "ive", name: "IVE", fandom: "DIVE", debut: "2021-12-01", platforms: "YouTube / Instagram / TikTok", followers: 12_840_000, lastComeback: "2026-02-02", gradient: ["#fca5a5", "#fcd34d"] },
+  { id: "aespa", name: "aespa", fandom: "MY", debut: "2020-11-17", platforms: "Weverse / YouTube / TikTok", followers: 14_210_000, lastComeback: "2025-10-21", gradient: ["#67e8f9", "#818cf8"] },
+  { id: "lesserafim", name: "LE SSERAFIM", fandom: "FEARNOT", debut: "2022-05-02", platforms: "Weverse / YouTube / TikTok", followers: 11_090_000, lastComeback: "2025-08-25", gradient: ["#bfdbfe", "#a5b4fc"] },
+  { id: "newjeans", name: "NewJeans", fandom: "Bunnies", debut: "2022-07-22", platforms: "YouTube / Instagram / TikTok", followers: 10_870_000, lastComeback: "2025-06-27", gradient: ["#93c5fd", "#6ee7b7"] },
+  { id: "nmixx", name: "NMIXX", fandom: "NSWER", debut: "2022-02-22", platforms: "YouTube / Instagram / TikTok", followers: 6_420_000, lastComeback: "2026-03-09", gradient: ["#c4b5fd", "#5eead4"] },
+  { id: "exo", name: "EXO", fandom: "EXO-L", debut: "2012-04-08", platforms: "YouTube / Instagram / X", followers: 15_800_000, lastComeback: "2025-04-10", gradient: ["#94a3b8", "#e2e8f0"] },
+  { id: "nctdream", name: "NCT DREAM", fandom: "시즈니", debut: "2016-08-25", platforms: "YouTube / Instagram / TikTok", followers: 9_400_000, lastComeback: "2025-07-14", gradient: ["#86efac", "#22d3ee"] },
+  { id: "txt", name: "TOMORROW X TOGETHER", fandom: "MOA", debut: "2019-03-04", platforms: "Weverse / YouTube / X", followers: 12_100_000, lastComeback: "2025-11-03", gradient: ["#a5f3fc", "#f9a8d4"] },
+  { id: "enhypen", name: "ENHYPEN", fandom: "ENGENE", debut: "2020-11-30", platforms: "Weverse / YouTube / TikTok", followers: 11_600_000, lastComeback: "2026-01-19", gradient: ["#fda4af", "#111827"] },
+  { id: "ateez", name: "ATEEZ", fandom: "ATINY", debut: "2018-10-24", platforms: "YouTube / Instagram / X", followers: 8_700_000, lastComeback: "2025-12-05", gradient: ["#fdba74", "#ef4444"] },
+  { id: "itzy", name: "ITZY", fandom: "MIDZY", debut: "2019-02-12", platforms: "YouTube / Instagram / TikTok", followers: 9_900_000, lastComeback: "2025-06-09", gradient: ["#fde047", "#fb7185"] },
+  { id: "gidle", name: "i-dle", fandom: "네버랜드", debut: "2018-05-02", platforms: "YouTube / Instagram / TikTok", followers: 10_200_000, lastComeback: "2025-05-19", gradient: ["#f472b6", "#7c3aed"] },
+  { id: "redvelvet", name: "Red Velvet", fandom: "ReVeluv", debut: "2014-08-01", platforms: "YouTube / Instagram / X", followers: 11_300_000, lastComeback: "2025-06-30", gradient: ["#fca5a5", "#fecdd3"] },
+  { id: "riize", name: "RIIZE", fandom: "BRIIZE", debut: "2023-09-04", platforms: "YouTube / Instagram / TikTok", followers: 7_100_000, lastComeback: "2026-02-23", gradient: ["#7dd3fc", "#fbbf24"] },
+  { id: "babymonster", name: "BABYMONSTER", fandom: "MONSTIES", debut: "2023-11-27", platforms: "YouTube / Instagram / TikTok", followers: 8_900_000, lastComeback: "2025-10-10", gradient: ["#fb7185", "#111827"] },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// MEMBER SEEDS — 멤버 개인 종목 추가/삭제는 여기서
+// [id, 소속 그룹 id, 이름, 팔로워]
+// ─────────────────────────────────────────────────────────────
+const MEMBER_SEEDS: [string, string, string, number][] = [
+  // BTS
+  ["bts-rm", "bts", "RM", 12_400_000],
+  ["bts-jin", "bts", "진", 13_100_000],
+  ["bts-suga", "bts", "슈가", 11_800_000],
+  ["bts-jhope", "bts", "제이홉", 12_200_000],
+  ["bts-jimin", "bts", "지민", 16_900_000],
+  ["bts-v", "bts", "뷔", 17_300_000],
+  ["bts-jungkook", "bts", "정국", 18_200_000],
+  // BLACKPINK
+  ["bp-jisoo", "blackpink", "지수", 14_500_000],
+  ["bp-jennie", "blackpink", "제니", 16_800_000],
+  ["bp-rose", "blackpink", "로제", 15_900_000],
+  ["bp-lisa", "blackpink", "리사", 19_400_000],
+  // TWICE
+  ["tw-nayeon", "twice", "나연", 7_200_000],
+  ["tw-jeongyeon", "twice", "정연", 5_100_000],
+  ["tw-momo", "twice", "모모", 6_800_000],
+  ["tw-sana", "twice", "사나", 7_000_000],
+  ["tw-jihyo", "twice", "지효", 5_600_000],
+  ["tw-mina", "twice", "미나", 6_100_000],
+  ["tw-dahyun", "twice", "다현", 6_500_000],
+  ["tw-chaeyoung", "twice", "채영", 5_300_000],
+  ["tw-tzuyu", "twice", "쯔위", 7_400_000],
+  // IVE
+  ["ive-yujin", "ive", "안유진", 6_900_000],
+  ["ive-gaeul", "ive", "가을", 3_800_000],
+  ["ive-rei", "ive", "레이", 4_200_000],
+  ["ive-wonyoung", "ive", "장원영", 9_800_000],
+  ["ive-liz", "ive", "리즈", 4_400_000],
+  ["ive-leeseo", "ive", "이서", 5_200_000],
+  // aespa
+  ["ae-karina", "aespa", "카리나", 9_200_000],
+  ["ae-giselle", "aespa", "지젤", 5_400_000],
+  ["ae-winter", "aespa", "윈터", 8_100_000],
+  ["ae-ningning", "aespa", "닝닝", 6_300_000],
+  // LE SSERAFIM
+  ["lsf-chaewon", "lesserafim", "김채원", 5_800_000],
+  ["lsf-sakura", "lesserafim", "사쿠라", 7_600_000],
+  ["lsf-yunjin", "lesserafim", "허윤진", 5_200_000],
+  ["lsf-kazuha", "lesserafim", "카즈하", 6_400_000],
+  ["lsf-eunchae", "lesserafim", "홍은채", 4_100_000],
+  // NewJeans
+  ["nj-minji", "newjeans", "민지", 6_700_000],
+  ["nj-hanni", "newjeans", "하니", 6_900_000],
+  ["nj-danielle", "newjeans", "다니엘", 6_200_000],
+  ["nj-haerin", "newjeans", "해린", 5_900_000],
+  ["nj-hyein", "newjeans", "혜인", 4_800_000],
+];
+
+// 멤버 엠블럼용 그라데이션 팔레트 (순환)
+const MEMBER_PALETTE: [string, string][] = [
+  ["#fda4af", "#fde68a"],
+  ["#a7f3d0", "#67e8f9"],
+  ["#c4b5fd", "#f0abfc"],
+  ["#fcd34d", "#fb923c"],
+  ["#93c5fd", "#c4b5fd"],
+  ["#6ee7b7", "#a3e635"],
+  ["#f9a8d4", "#c084fc"],
+  ["#7dd3fc", "#34d399"],
+];
+
+const fairStart = {
+  seedPrice: FAIR_START_PRICE,
+  seedChange1h: 0,
+  seedChange24h: 0,
+  seedChange7d: 0,
+  seedVolume24h: 0,
+  seedHolders: 0,
+};
+
+const groupAssets: Group[] = GROUP_SEEDS.map((g) => ({
+  ...g,
+  category: "group" as const,
+  status: "활동 중",
+  ...fairStart,
+}));
+
+const groupSeedMap = new Map(GROUP_SEEDS.map((g) => [g.id, g]));
+
+const memberAssets: Group[] = MEMBER_SEEDS.map(([id, parent, name, followers], i) => {
+  const pg = groupSeedMap.get(parent)!;
+  return {
+    id,
+    name,
+    category: "member" as const,
+    parentGroup: parent,
+    fandom: pg.fandom,
+    debut: pg.debut,
+    platforms: pg.platforms,
+    followers,
+    lastComeback: pg.lastComeback,
+    status: "활동 중",
+    gradient: MEMBER_PALETTE[i % MEMBER_PALETTE.length],
+    ...fairStart,
+  };
+});
+
+export const GROUPS: Group[] = [...groupAssets, ...memberAssets];
 
 export const GROUP_MAP: Record<string, Group> = Object.fromEntries(
   GROUPS.map((g) => [g.id, g])
