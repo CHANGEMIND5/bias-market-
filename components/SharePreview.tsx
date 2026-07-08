@@ -14,7 +14,7 @@ export default function SharePreview({
   change24h: number;
   onClose: () => void;
 }) {
-  const { showToast } = useStore();
+  const { showToast, recordShareCopy } = useStore();
 
   const shareText = `내 최애 ${group.name}가 24h ${fmtPct(change24h)} ${
     change24h >= 0 ? "상승" : "변동"
@@ -23,6 +23,7 @@ export default function SharePreview({
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(shareText);
+      recordShareCopy(); // 공유 마스터 뱃지 진행도
       showToast("success", "공유 문구를 복사했어요!");
     } catch {
       showToast("error", "복사에 실패했습니다.");

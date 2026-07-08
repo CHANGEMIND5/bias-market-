@@ -10,6 +10,7 @@ import RecentTrades from "@/components/RecentTrades";
 import SharePreview from "@/components/SharePreview";
 import TradePanel from "@/components/TradePanel";
 import { spotPrice } from "@/lib/amm";
+import { battleRanking } from "@/lib/battle";
 import { changeColor, fmt, fmtCompact, fmtInt, fmtPct } from "@/lib/format";
 import { DISCLAIMER_EN, DISCLAIMER_KO, GROUP_MAP, TOTAL_SHARES } from "@/lib/mockData";
 import { resolveSlug } from "@/lib/slug";
@@ -45,17 +46,12 @@ export default function MarketDetailPage() {
   const poolValue = m.fanReserve + m.shareReserve * price;
   const parent = group.parentGroup ? GROUP_MAP[group.parentGroup] : null;
 
-  // ── 차트 위 요약 카드 데이터 ──────────────────────────
-  // 팬덤 배틀 순위: 팬덤 가치 기준 실제 순위
-  const rank =
-    Object.values(state.markets)
-      .map((mk) => mk.fanReserve / mk.shareReserve)
-      .filter((p) => p > price).length + 1;
-  // 배틀 포인트: 아직 배틀 시스템이 없어 데모 점수 (24h 변동 + 거래량 기반)
-  const battlePts = Math.max(
-    5,
-    Math.min(99.9, 50 + ch24 * 5 + Math.log10(1 + m.volume24h) * 4)
+  // ── 차트 위 요약 카드 데이터 — 팬덤 배틀 실제 점수/순위 ──
+  const battleEntry = battleRanking(state.markets).find(
+    (e) => e.groupId === group.id
   );
+  const rank = battleEntry?.rank ?? 0;
+  const battlePts = battleEntry?.score ?? 0;
 
   const stats: [string, string][] = [
     ["팬덤 가치", `Fan$ ${fmtCompact(price * TOTAL_SHARES)}`],

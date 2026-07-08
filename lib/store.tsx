@@ -11,6 +11,7 @@ import React, {
 import { useSession } from "next-auth/react";
 import { spotPrice } from "./amm";
 import { todayString } from "./format";
+import { DEFAULT_GAME, GameData, loadGame, saveGame, withVisit } from "./game";
 import { initialState } from "./storage";
 import { AppState, Holding, MarketState, Trade } from "./types";
 
@@ -40,6 +41,9 @@ interface StoreValue {
   userImage: string | null;
   updateName: (name: string) => Promise<ClaimResult>;
   updateAvatar: (avatar: number) => Promise<ClaimResult>;
+  game: GameData;
+  recordShareCopy: () => void;
+  markBadgeEarned: (id: string) => void;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -99,6 +103,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [userName, setUserName] = useState<string | null>(null);
   const [userImage, setUserImage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  const [game, setGame] = useState<GameData>(DEFAULT_GAME);
+
+  // 게임 레이어 데이터 로드 + 오늘 방문 기록 (스트릭)
+  useEffect(() => {
+    setGame(saveGame(withVisit(loadGame())));
+  }, []);
+
+  const recordShareCopy = useCallback(() => {
+    setGame((g) => saveGame({ ...g, shareCopies: g.shareCopies + 1 }));
+  }, []);
+
+  const markBadgeEarned = useCallback((id: string) => {
+    setGame((g) =>
+      g.badgeEarned[id]
+        ? g
+        : saveGame({
+            ...g,
+            badgeEarned: { ...g.badgeEarned, [id]: todayString() },
+          })
+    );
+  }, []);
 
   const showToast = useCallback((type: ToastMsg["type"], text: string) => {
     const id = ++toastSeq;
@@ -300,6 +325,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const value: StoreValue = {
     state, hydrated, loggedIn, isAdmin, userName, userImage, updateName, updateAvatar,
+    game, recordShareCopy, markBadgeEarned,
     toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,
