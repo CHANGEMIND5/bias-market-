@@ -36,6 +36,9 @@ interface StoreValue {
   hydrated: boolean;
   loggedIn: boolean;
   isAdmin: boolean;
+  userName: string | null;
+  userImage: string | null;
+  updateName: (name: string) => Promise<ClaimResult>;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -92,6 +95,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(initialState);
   const [hydrated, setHydrated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userImage, setUserImage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
   const showToast = useCallback((type: ToastMsg["type"], text: string) => {
@@ -116,6 +121,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         trades: (data.trades ?? []) as Trade[],
       }));
       setIsAdmin(data.user?.isAdmin === true);
+      setUserName(data.user?.name ?? null);
+      setUserImage(data.user?.image ?? null);
       setHydrated(true);
     } catch {
       // server unreachable — keep showing current data
@@ -225,6 +232,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loggedIn]);
 
+  const updateName = useCallback(
+    async (name: string): Promise<ClaimResult> => {
+      if (!loggedIn) return { ok: false, error: "로그인이 필요해요." };
+      try {
+        const res = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!data.ok) return { ok: false, error: data.error ?? "닉네임을 바꿀 수 없습니다." };
+        setUserName(data.name);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "서버에 연결할 수 없습니다." };
+      }
+    },
+    [loggedIn]
+  );
+
   const priceOf = useCallback(
     (groupId: string) => {
       const m = state.markets[groupId];
@@ -251,7 +278,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const level = Math.floor(state.xp / XP_PER_LEVEL) + 1;
 
   const value: StoreValue = {
-    state, hydrated, loggedIn, isAdmin, toasts, showToast, refresh,
+    state, hydrated, loggedIn, isAdmin, userName, userImage, updateName,
+    toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,
     level,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -32,8 +33,28 @@ export default function Sidebar({
     state, portfolioValue, totalCost, totalPnl, holdingCount,
     level, levelTitle, xpInLevel, xpPerLevel,
     claimDailyReward, canClaimReward, showToast,
+    userName, userImage, updateName,
   } = useStore();
   const { data: session } = useSession();
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  const displayName = userName ?? session?.user?.name ?? "팬";
+  const displayImage = userImage ?? session?.user?.image ?? null;
+
+  const saveName = async () => {
+    if (savingName) return;
+    setSavingName(true);
+    const r = await updateName(nameDraft.trim());
+    setSavingName(false);
+    if (r.ok) {
+      showToast("success", "닉네임이 변경됐어요!");
+      setEditingName(false);
+    } else {
+      showToast("error", r.error ?? "닉네임을 바꿀 수 없습니다.");
+    }
+  };
 
   const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   const totalAssets = state.balance + portfolioValue;
@@ -51,10 +72,10 @@ export default function Sidebar({
       {/* Account */}
       {session?.user ? (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-3.5 flex items-center gap-3">
-          {session.user.image ? (
+          {displayImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={session.user.image}
+              src={displayImage}
               alt=""
               className="w-9 h-9 rounded-full shrink-0"
               referrerPolicy="no-referrer"
@@ -66,15 +87,60 @@ export default function Sidebar({
             />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate">{session.user.name}</p>
-            <p className="text-[11px] text-gray-400 truncate">{session.user.email}</p>
+            {editingName ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value.slice(0, 20))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) saveName();
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                  autoFocus
+                  className="w-full min-w-0 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold outline-none focus:border-emerald-400"
+                  placeholder="닉네임 (2~20자)"
+                />
+                <button
+                  onClick={saveName}
+                  disabled={savingName}
+                  className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 shrink-0 disabled:opacity-50"
+                >
+                  저장
+                </button>
+                <button
+                  onClick={() => setEditingName(false)}
+                  className="text-[11px] text-gray-400 hover:text-gray-600 shrink-0"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-semibold truncate">
+                  {displayName}
+                  <button
+                    onClick={() => {
+                      setNameDraft(displayName);
+                      setEditingName(true);
+                    }}
+                    aria-label="닉네임 변경"
+                    className="ml-1.5 text-[11px] text-gray-300 hover:text-gray-500"
+                  >
+                    ✏️
+                  </button>
+                </p>
+                <p className="text-[11px] text-gray-400 truncate">{session.user.email}</p>
+              </>
+            )}
           </div>
-          <button
-            onClick={() => signOut()}
-            className="text-[11px] text-gray-400 hover:text-gray-600 shrink-0"
-          >
-            로그아웃
-          </button>
+          {!editingName && (
+            <button
+              onClick={() => signOut()}
+              className="text-[11px] text-gray-400 hover:text-gray-600 shrink-0"
+            >
+              로그아웃
+            </button>
+          )}
         </div>
       ) : (
         <button

@@ -18,8 +18,9 @@ export const authOptions: NextAuthOptions = {
         try {
           await prisma.user.upsert({
             where: { id: token.sub },
+            // NOTE: name은 업데이트하지 않음 — 유저가 바꾼 닉네임을
+            // 재로그인이 덮어쓰지 않도록 이미지(프로필 사진)만 갱신
             update: {
-              name: token.name ?? undefined,
               image: token.picture ?? undefined,
             },
             create: {
