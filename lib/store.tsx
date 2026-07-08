@@ -35,6 +35,7 @@ interface StoreValue {
   state: AppState;
   hydrated: boolean;
   loggedIn: boolean;
+  isAdmin: boolean;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -90,6 +91,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // then the real shared state arrives from /api/state.
   const [state, setState] = useState<AppState>(initialState);
   const [hydrated, setHydrated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
   const showToast = useCallback((type: ToastMsg["type"], text: string) => {
@@ -113,6 +115,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         favorites: (data.favorites ?? []) as string[],
         trades: (data.trades ?? []) as Trade[],
       }));
+      setIsAdmin(data.user?.isAdmin === true);
       setHydrated(true);
     } catch {
       // server unreachable — keep showing current data
@@ -248,7 +251,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const level = Math.floor(state.xp / XP_PER_LEVEL) + 1;
 
   const value: StoreValue = {
-    state, hydrated, loggedIn, toasts, showToast, refresh,
+    state, hydrated, loggedIn, isAdmin, toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,
     level,

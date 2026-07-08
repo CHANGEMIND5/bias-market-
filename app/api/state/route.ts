@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureMarkets } from "@/lib/markets";
@@ -54,6 +55,7 @@ export async function GET() {
       lastRewardDate: user.lastRewardDate,
       name: user.name,
       image: user.image,
+      isAdmin: isAdminEmail(session?.user?.email),
     },
     holdings: Object.fromEntries(
       holdings.map((h) => [h.groupId, { shares: h.shares, cost: h.cost }])
