@@ -1,15 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { fmt } from "@/lib/format";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ColorType,
+  CrosshairMode,
+  IChartApi,
+  ISeriesApi,
+  UTCTimestamp,
+  createChart,
+} from "lightweight-charts";
 
-interface Candle {
-  t: number;
+interface ApiCandle {
+  t: number; // bucket start (ms)
   open: number;
   high: number;
   low: number;
   close: number;
-  volume: number;
+  volume: number; // Fan$ traded
 }
 
 const TIMEFRAMES = [
@@ -23,22 +30,7 @@ const TIMEFRAMES = [
   { label: "일봉", minutes: 1440 },
 ];
 
-const POLL_MS = 10_000; // 10초마다 실시간 갱신
-
-const W = 800;
-const H = 260;
-const VOL_H = 56;
-const PAD_R = 56;
-const PAD_T = 10;
-const COUNT = 60;
-
-function timeLabel(t: number, minutes: number): string {
-  const d = new Date(t);
-  if (minutes >= 1440) {
-    return `${d.getMonth() + 1}/${d.getDate()}`;
-  }
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+const POLL_MS = 10_000;
 
 export default function PriceChart({
   groupId,
@@ -48,7 +40,82 @@ export default function PriceChart({
   price: number;
 }) {
   const [tf, setTf] = useState(5); // default 1시간
-  const [candles, setCandles] = useState<Candle[] | null>(null);
+  const [demo, setDemo] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const fitRef = useRef(true);
+
+  // Create the chart once per group
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const chart = createChart(el, {
+      width: el.clientWidth,
+      height: 320,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#9ca3af",
+        fontSize: 11,
+        attributionLogo: true, // keep TradingView attribution visible
+      },
+      grid: {
+        vertLines: { color: "#f3f4f6" },
+        horzLines: { color: "#f3f4f6" },
+      },
+      rightPriceScale: { borderColor: "#e5e7eb" },
+      timeScale: {
+        borderColor: "#e5e7eb",
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      crosshair: { mode: CrosshairMode.Normal },
+    });
+
+    const precise = price < 5;
+    const candles = chart.addCandlestickSeries({
+      upColor: "#0ea06c",
+      downColor: "#e5484d",
+      borderUpColor: "#0ea06c",
+      borderDownColor: "#e5484d",
+      wickUpColor: "#0ea06c",
+      wickDownColor: "#e5484d",
+      priceFormat: {
+        type: "price",
+        precision: precise ? 4 : 2,
+        minMove: precise ? 0.0001 : 0.01,
+      },
+    });
+
+    const volume = chart.addHistogramSeries({
+      priceScaleId: "",
+      priceFormat: { type: "volume" },
+    });
+    chart.priceScale("").applyOptions({
+      scaleMargins: { top: 0.82, bottom: 0 },
+    });
+
+    chartRef.current = chart;
+    candleRef.current = candles;
+    volumeRef.current = volume;
+    fitRef.current = true;
+
+    const ro = new ResizeObserver(() => {
+      chart.applyOptions({ width: el.clientWidth });
+    });
+    ro.observe(el);
+
+    return () => {
+      ro.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      candleRef.current = null;
+      volumeRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId]);
 
   const load = useCallback(async () => {
     try {
@@ -57,46 +124,53 @@ export default function PriceChart({
       );
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data.candles)) setCandles(data.candles);
+      if (!Array.isArray(data.candles) || !candleRef.current || !volumeRef.current) return;
+
+      // shift to local time so axis labels show KST
+      const tzOffSec = new Date().getTimezoneOffset() * 60;
+      const candles = (data.candles as ApiCandle[]).map((c) => ({
+        time: (Math.floor(c.t / 1000) - tzOffSec) as UTCTimestamp,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+      const volumes = (data.candles as ApiCandle[]).map((c) => ({
+        time: (Math.floor(c.t / 1000) - tzOffSec) as UTCTimestamp,
+        value: c.volume,
+        color: c.close >= c.open ? "rgba(14,160,108,0.35)" : "rgba(229,72,77,0.35)",
+      }));
+
+      candleRef.current.setData(candles);
+      volumeRef.current.setData(volumes);
+      setDemo(!!data.demo);
+
+      if (fitRef.current) {
+        chartRef.current?.timeScale().fitContent();
+        fitRef.current = false;
+      }
     } catch {
       // keep last data on network hiccups
     }
   }, [groupId, tf]);
 
-  // Load on group/timeframe change, refresh every POLL_MS,
-  // and immediately when the live price moves (e.g. my own trade).
+  // Load on group/timeframe change + refit
   useEffect(() => {
-    setCandles(null);
+    fitRef.current = true;
     load();
   }, [load]);
 
+  // Refresh instantly when the live price moves (e.g. my own trade)
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [price]);
 
+  // Poll for other fans' trades
   useEffect(() => {
     const id = setInterval(load, POLL_MS);
     return () => clearInterval(id);
   }, [load]);
-
-  const view = useMemo(() => {
-    if (!candles || candles.length === 0) return null;
-    let mn = Infinity;
-    let mx = -Infinity;
-    let mv = 0;
-    for (const c of candles) {
-      if (c.low < mn) mn = c.low;
-      if (c.high > mx) mx = c.high;
-      if (c.volume > mv) mv = c.volume;
-    }
-    const pad = (mx - mn) * 0.08 || mx * 0.02 || 0.02;
-    return { min: mn - pad, max: mx + pad, maxVol: mv };
-  }, [candles]);
-
-  const chartH = H - VOL_H - PAD_T - 8;
-  const slot = (W - PAD_R) / COUNT;
-  const cw = Math.max(2, slot * 0.55);
 
   return (
     <div>
@@ -117,123 +191,35 @@ export default function PriceChart({
             </button>
           ))}
         </div>
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
-          <span className="relative flex w-2 h-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500" />
+        <div className="flex items-center gap-2">
+          {demo && (
+            <span className="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-semibold text-gray-400">
+              데모 차트 · 아직 거래 없음
+            </span>
+          )}
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+            <span className="relative flex w-2 h-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500" />
+            </span>
+            실시간
           </span>
-          실시간
-        </span>
+        </div>
       </div>
 
-      {!candles || !view ? (
-        <div
-          className="w-full grid place-items-center text-xs text-gray-400"
-          style={{ aspectRatio: `${W} / ${H}` }}
-        >
-          차트 불러오는 중...
-        </div>
-      ) : (
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="w-full h-auto select-none"
-          role="img"
-          aria-label="실시간 가격 차트"
-        >
-          {(() => {
-            const { min, max, maxVol } = view;
-            const y = (v: number) => PAD_T + ((max - v) / (max - min)) * chartH;
-            const gridLines = 4;
-            const grid = Array.from(
-              { length: gridLines + 1 },
-              (_, i) => min + ((max - min) * i) / gridLines
-            );
-            return (
-              <>
-                {/* Grid + price labels */}
-                {grid.map((v, i) => (
-                  <g key={`g${i}`}>
-                    <line
-                      x1={0} x2={W - PAD_R} y1={y(v)} y2={y(v)}
-                      stroke="#f3f4f6" strokeWidth={1}
-                    />
-                    <text x={W - PAD_R + 6} y={y(v) + 3.5} fontSize={10} fill="#9ca3af">
-                      {fmt(v)}
-                    </text>
-                  </g>
-                ))}
+      <div ref={containerRef} className="w-full" style={{ height: 320 }} />
 
-                {/* X-axis time labels */}
-                {candles.map((c, i) =>
-                  i % 15 === 7 ? (
-                    <text
-                      key={`x${i}`}
-                      x={i * slot + slot / 2}
-                      y={H - VOL_H - 0}
-                      fontSize={9}
-                      fill="#c0c5cd"
-                      textAnchor="middle"
-                    >
-                      {timeLabel(c.t, TIMEFRAMES[tf].minutes)}
-                    </text>
-                  ) : null
-                )}
-
-                {/* Current price dashed line */}
-                <line
-                  x1={0} x2={W - PAD_R} y1={y(price)} y2={y(price)}
-                  stroke="#0ea06c" strokeWidth={1} strokeDasharray="4 3"
-                />
-                <rect x={W - PAD_R + 2} y={y(price) - 9} width={PAD_R - 4} height={18} rx={4} fill="#0ea06c" />
-                <text
-                  x={W - PAD_R + (PAD_R - 2) / 2} y={y(price) + 3.5}
-                  fontSize={10} fill="#fff" textAnchor="middle" fontWeight={600}
-                >
-                  {fmt(price)}
-                </text>
-
-                {/* Candles */}
-                {candles.map((c, i) => {
-                  const cx = i * slot + slot / 2;
-                  const up = c.close >= c.open;
-                  const flat = c.close === c.open && c.high === c.low;
-                  const color = flat ? "#c8cdd5" : up ? "#0ea06c" : "#e5484d";
-                  const bodyTop = y(Math.max(c.open, c.close));
-                  const bodyH = Math.max(1, Math.abs(y(c.open) - y(c.close)));
-                  return (
-                    <g key={`c${i}`}>
-                      <line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={color} strokeWidth={1} />
-                      <rect x={cx - cw / 2} y={bodyTop} width={cw} height={bodyH} fill={color} rx={0.5} />
-                    </g>
-                  );
-                })}
-
-                {/* Volume bars (real traded Fan$) */}
-                {maxVol > 0 &&
-                  candles.map((c, i) => {
-                    if (c.volume <= 0) return null;
-                    const cx = i * slot + slot / 2;
-                    const up = c.close >= c.open;
-                    const vh = (c.volume / maxVol) * (VOL_H - 8);
-                    return (
-                      <rect
-                        key={`v${i}`}
-                        x={cx - cw / 2}
-                        y={H - vh}
-                        width={cw}
-                        height={vh}
-                        fill={up ? "#0ea06c" : "#e5484d"}
-                        opacity={0.28}
-                      />
-                    );
-                  })}
-              </>
-            );
-          })()}
-        </svg>
-      )}
       <p className="text-[10px] text-gray-300 text-right mt-1">
-        실제 거래 기록 기반 · 10초마다 자동 갱신
+        실제 거래 기록 기반 · 10초마다 자동 갱신 · Charts powered by{" "}
+        <a
+          href="https://www.tradingview.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-gray-400"
+        >
+          TradingView
+        </a>{" "}
+        Lightweight Charts™
       </p>
     </div>
   );
