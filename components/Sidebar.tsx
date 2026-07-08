@@ -126,19 +126,21 @@ export default function Sidebar({
               </div>
             ) : (
               <>
-                <p className="text-sm font-semibold truncate">
-                  {displayName}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p className="text-sm font-semibold truncate min-w-0">
+                    {displayName}
+                  </p>
                   <button
                     onClick={() => {
                       setNameDraft(displayName);
                       setEditingName(true);
                     }}
                     aria-label="닉네임 변경"
-                    className="ml-1.5 text-[11px] text-gray-300 hover:text-gray-500"
+                    className="text-[11px] text-gray-300 hover:text-gray-500 shrink-0"
                   >
                     ✏️
                   </button>
-                </p>
+                </div>
                 <p className="text-[11px] text-gray-400 truncate">{session.user.email}</p>
               </>
             )}
