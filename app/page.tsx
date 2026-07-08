@@ -1,41 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { SessionProvider } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import CommunityView from "@/components/CommunityView";
-import GroupInfoCard from "@/components/GroupInfoCard";
 import HistoryView from "@/components/HistoryView";
-import MarketDetail from "@/components/MarketDetail";
 import MarketTable from "@/components/MarketTable";
 import MissionsView from "@/components/MissionsView";
 import PortfolioCard from "@/components/PortfolioCard";
-import PriceChart from "@/components/PriceChart";
-import RecentTrades from "@/components/RecentTrades";
-import SharePreview from "@/components/SharePreview";
 import Sidebar, { View } from "@/components/Sidebar";
-import Toasts from "@/components/Toast";
-import TradePanel from "@/components/TradePanel";
-import { spotPrice } from "@/lib/amm";
-import { DISCLAIMER_EN, DISCLAIMER_KO, GROUPS, GROUP_MAP } from "@/lib/mockData";
-import { StoreProvider, useStore } from "@/lib/store";
+import { DISCLAIMER_EN, DISCLAIMER_KO, GROUP_MAP } from "@/lib/mockData";
+import { slugFor } from "@/lib/slug";
+import { useStore } from "@/lib/store";
 
-function Dashboard() {
-  const { state, hydrated } = useStore();
+export default function Page() {
+  const { hydrated } = useStore();
+  const router = useRouter();
   const [view, setView] = useState<View>("market");
-  const [selectedId, setSelectedId] = useState(GROUPS[0].id);
-  const [shareOpen, setShareOpen] = useState(false);
 
-  const group = GROUP_MAP[selectedId] ?? GROUPS[0];
-  const market = state.markets[group.id];
-  const price = spotPrice(market);
-  const ch24 =
-    market.baseline24h > 0
-      ? ((price - market.baseline24h) / market.baseline24h) * 100
-      : 0;
-
-  const selectAndShowMarket = (id: string) => {
-    setSelectedId(id);
-    setView("market");
+  const goToMarket = (id: string) => {
+    const g = GROUP_MAP[id];
+    if (g) router.push(`/market/${slugFor(g)}`);
   };
 
   return (
@@ -43,45 +27,19 @@ function Dashboard() {
       <div className="mx-auto max-w-[1440px] p-4 lg:p-6 flex flex-col lg:flex-row gap-5">
         <Sidebar view={view} onNavigate={setView} />
 
-        <main className="flex-1 min-w-0 flex flex-col gap-5" style={{ opacity: hydrated ? 1 : 0.4 }}>
+        <main
+          className="flex-1 min-w-0 flex flex-col gap-5"
+          style={{ opacity: hydrated ? 1 : 0.4 }}
+        >
           {view === "market" && (
-            <>
-              <MarketTable selectedId={selectedId} onSelect={setSelectedId} />
-
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-                {/* Detail summary */}
-                <div className="xl:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-                  <MarketDetail group={group} />
-                </div>
-
-                {/* Chart + recent trades */}
-                <div className="xl:col-span-6 bg-white rounded-2xl border border-gray-200 shadow-card p-5 flex flex-col gap-5">
-                  <PriceChart groupId={group.id} price={price} />
-                  <RecentTrades groupId={group.id} price={price} />
-                </div>
-
-                {/* Trade panel + group info */}
-                <div className="xl:col-span-3 flex flex-col gap-5">
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-                    <TradePanel group={group} onBuySuccess={() => setShareOpen(true)} />
-                  </div>
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-                    <GroupInfoCard group={group} />
-                  </div>
-                </div>
-              </div>
-            </>
+            <MarketTable selectedId="" onSelect={goToMarket} />
           )}
 
           {view === "watchlist" && (
-            <MarketTable
-              selectedId={selectedId}
-              onSelect={selectAndShowMarket}
-              favoritesOnly
-            />
+            <MarketTable selectedId="" onSelect={goToMarket} favoritesOnly />
           )}
 
-          {view === "portfolio" && <PortfolioCard onSelect={selectAndShowMarket} />}
+          {view === "portfolio" && <PortfolioCard onSelect={goToMarket} />}
           {view === "history" && <HistoryView />}
           {view === "community" && <CommunityView />}
           {view === "missions" && <MissionsView />}
@@ -93,25 +51,6 @@ function Dashboard() {
           </footer>
         </main>
       </div>
-
-      {shareOpen && (
-        <SharePreview
-          group={group}
-          change24h={ch24}
-          onClose={() => setShareOpen(false)}
-        />
-      )}
-      <Toasts />
     </div>
-  );
-}
-
-export default function Page() {
-  return (
-    <SessionProvider>
-      <StoreProvider>
-        <Dashboard />
-      </StoreProvider>
-    </SessionProvider>
   );
 }

@@ -140,13 +140,14 @@ export default function MarketTable({
               <th className="text-right font-medium py-3 px-2">24시간</th>
               <th className="text-right font-medium py-3 px-2">7일</th>
               <th className="text-right font-medium py-3 px-2">팬덤 가치</th>
-              <th className="text-right font-medium py-3 px-4">24h 거래량</th>
+              <th className="text-right font-medium py-3 px-2">24h 거래량</th>
+              <th className="text-right font-medium py-3 px-4">거래</th>
             </tr>
           </thead>
           <tbody>
             {visible.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-10 text-center text-gray-400">
+                <td colSpan={10} className="py-10 text-center text-gray-400">
                   {showFavs || favoritesOnly
                     ? "관심 목록이 비어 있어요. 별을 눌러 그룹을 추가해 보세요."
                     : "표시할 그룹이 없습니다."}
@@ -198,8 +199,19 @@ export default function MarketTable({
                 <td className="px-2 py-3.5 text-right text-gray-700">
                   Fan$ {fmtCompact(r.marketCap)}
                 </td>
-                <td className="px-4 py-3.5 text-right text-gray-700">
+                <td className="px-2 py-3.5 text-right text-gray-700">
                   Fan$ {fmtCompact(r.volume)}
+                </td>
+                <td className="px-4 py-3.5 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(r.group.id);
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                  >
+                    거래하기
+                  </button>
                 </td>
               </tr>
             ))}
