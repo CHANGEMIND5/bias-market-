@@ -127,7 +127,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [refresh, status]);
 
   useEffect(() => {
-    const t = setInterval(refresh, 30_000);
+    const t = setInterval(refresh, 15_000);
     return () => clearInterval(t);
   }, [refresh]);
 

@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fmt, fmtShares } from "@/lib/format";
-import { useStore } from "@/lib/store";
-import { hashString, mulberry32 } from "@/lib/rng";
 
 interface Row {
-  time: string;
+  id: string;
   side: "buy" | "sell";
   price: number;
   shares: number;
-  total: number;
+  fan: number;
+  time: string; // ISO
   mine: boolean;
 }
+
+const POLL_MS = 10_000;
 
 function timeLabel(iso: string): string {
   const d = new Date(iso);
@@ -26,51 +27,37 @@ export default function RecentTrades({
   groupId: string;
   price: number;
 }) {
-  const { state } = useStore();
   const [mineOnly, setMineOnly] = useState(false);
-  // Time-based mock rows are generated only after mount so the
-  // server-rendered HTML never contains clock-dependent text
-  // (prevents React hydration mismatch).
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [rows, setRows] = useState<Row[] | null>(null);
 
-  // Mock market trades (deterministic per group + rounded price)
-  const mockRows = useMemo<Row[]>(() => {
-    if (!mounted) return [];
-    const rand = mulberry32(hashString(`${groupId}-trades-${price.toFixed(1)}`));
-    const now = Date.now();
-    let t = now - 20_000;
-    const rows: Row[] = [];
-    for (let i = 0; i < 8; i++) {
-      const side: "buy" | "sell" = rand() > 0.45 ? "buy" : "sell";
-      const p = price * (1 + (rand() - 0.5) * 0.004);
-      const shares = Math.round(10 + rand() * 250);
-      rows.push({
-        time: timeLabel(new Date(t).toISOString()),
-        side, price: p, shares, total: p * shares, mine: false,
-      });
-      t -= (10 + rand() * 60) * 1000;
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/trades?groupId=${encodeURIComponent(groupId)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.trades)) setRows(data.trades);
+    } catch {
+      // keep last data
     }
-    return rows;
-  }, [groupId, price, mounted]);
+  }, [groupId]);
 
-  const myRows = useMemo<Row[]>(
-    () =>
-      state.trades
-        .filter((t) => t.groupId === groupId)
-        .slice(0, 20)
-        .map((t) => ({
-          time: timeLabel(t.time),
-          side: t.side,
-          price: t.price,
-          shares: t.shares,
-          total: t.side === "buy" ? t.fan : t.fan,
-          mine: true,
-        })),
-    [state.trades, groupId]
-  );
+  useEffect(() => {
+    setRows(null);
+    load();
+  }, [load]);
 
-  const rows = mineOnly ? myRows : [...myRows.slice(0, 3), ...mockRows].slice(0, 10);
+  // refresh instantly after my own trade (price prop changes), plus polling
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [price]);
+
+  useEffect(() => {
+    const id = setInterval(load, POLL_MS);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const visible = (rows ?? []).filter((r) => (mineOnly ? r.mine : true)).slice(0, 10);
 
   return (
     <div>
@@ -106,25 +93,36 @@ export default function RecentTrades({
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && (
+          {rows === null && (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-gray-400">
-                아직 거래 내역이 없어요.
+              <td colSpan={5} className="py-6 text-center text-gray-300">
+                불러오는 중...
               </td>
             </tr>
           )}
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-gray-50 last:border-0">
+          {rows !== null && visible.length === 0 && (
+            <tr>
+              <td colSpan={5} className="py-6 text-center text-gray-400">
+                {mineOnly
+                  ? "이 종목의 내 거래가 아직 없어요."
+                  : "아직 거래가 없어요. 첫 거래의 주인공이 되어보세요!"}
+              </td>
+            </tr>
+          )}
+          {visible.map((r) => (
+            <tr key={r.id} className="border-b border-gray-50 last:border-0">
               <td className="py-2 text-gray-500">
-                {r.time}
-                {r.mine && <span className="ml-1 text-[9px] text-violet-500 font-semibold">나</span>}
+                {timeLabel(r.time)}
+                {r.mine && (
+                  <span className="ml-1 text-[9px] text-violet-500 font-semibold">나</span>
+                )}
               </td>
               <td className={`py-2 font-semibold ${r.side === "buy" ? "text-up" : "text-down"}`}>
                 {r.side === "buy" ? "매수" : "매도"}
               </td>
               <td className="py-2 text-right">{fmt(r.price)}</td>
               <td className="py-2 text-right">{fmtShares(r.shares)}</td>
-              <td className="py-2 text-right">{fmt(r.total)}</td>
+              <td className="py-2 text-right">{fmt(r.fan)}</td>
             </tr>
           ))}
         </tbody>

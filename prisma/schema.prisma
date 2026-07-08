@@ -58,6 +58,15 @@ model Trade {
   @@index([groupId, createdAt])
 }
 
+model PricePoint {
+  id        String   @id @default(cuid())
+  groupId   String
+  price     Float
+  createdAt DateTime @default(now())
+
+  @@index([groupId, createdAt])
+}
+
 model Favorite {
   userId  String
   groupId String

@@ -72,6 +72,9 @@ export async function POST(req: Request) {
             price: q.execPrice, shares: q.sharesOut, fan: amount, fee: q.fee,
           },
         }),
+        prisma.pricePoint.create({
+          data: { groupId, price: q.newFanReserve / q.newShareReserve },
+        }),
       ]);
 
     return NextResponse.json({
@@ -122,6 +125,9 @@ export async function POST(req: Request) {
         userId, groupId, side: "sell",
         price: q.execPrice, shares: amount, fan: q.fanOut, fee: q.fee,
       },
+    }),
+    prisma.pricePoint.create({
+      data: { groupId, price: q.newFanReserve / q.newShareReserve },
     }),
   ]);
 
