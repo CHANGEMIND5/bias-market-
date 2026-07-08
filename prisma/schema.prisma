@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String     @id // Google account subject (sub)
+  email          String     @unique
+  name           String?
+  image          String?
+  balance        Float      @default(10000)
+  xp             Int        @default(0)
+  lastRewardDate String?
+  createdAt      DateTime   @default(now())
+  holdings       Holding[]
+  trades         Trade[]
+  favorites      Favorite[]
+}
+
+model Market {
+  groupId      String @id
+  fanReserve   Float
+  shareReserve Float
+  baseline1h   Float
+  baseline24h  Float
+  baseline7d   Float
+  volume24h    Float
+  holders      Int
+}
+
+model Holding {
+  userId  String
+  groupId String
+  shares  Float
+  cost    Float
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  side      String // "buy" | "sell"
+  price     Float
+  shares    Float
+  fan       Float
+  fee       Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([groupId, createdAt])
+}
+
+model Favorite {
+  userId  String
+  groupId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}
