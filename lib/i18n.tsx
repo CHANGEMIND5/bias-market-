@@ -347,6 +347,11 @@ const ko = {
   "ok.nick": "닉네임이 변경됐어요!",
   "ok.avatar": "아바타가 변경됐어요!",
   "ok.googlePhoto": "구글 사진으로 되돌렸어요.",
+  "lv.1": "새싹 팬",
+  "lv.3": "열혈 팬",
+  "lv.6": "홈마스터",
+  "lv.10": "팬마스터",
+  "lv.20": "레전드 팬",
 };
 
 type Dict = typeof ko;
@@ -659,6 +664,11 @@ const en: Dict = {
   "ok.nick": "Nickname updated!",
   "ok.avatar": "Avatar updated!",
   "ok.googlePhoto": "Restored your Google photo.",
+  "lv.1": "Rookie Fan",
+  "lv.3": "Devoted Fan",
+  "lv.6": "Super Fan",
+  "lv.10": "Fan Master",
+  "lv.20": "Legend Fan",
 };
 
 const es: Dict = {
@@ -968,6 +978,11 @@ const es: Dict = {
   "ok.nick": "¡Apodo actualizado!",
   "ok.avatar": "¡Avatar actualizado!",
   "ok.googlePhoto": "Foto de Google restaurada.",
+  "lv.1": "Fan novato",
+  "lv.3": "Fan devoto",
+  "lv.6": "Súper fan",
+  "lv.10": "Fan máster",
+  "lv.20": "Fan leyenda",
 };
 
 const DICTS: Record<Lang, Dict> = { ko, en, es };

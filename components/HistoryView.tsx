@@ -8,7 +8,8 @@ import { useStore } from "@/lib/store";
 
 export default function HistoryView() {
   const { state } = useStore();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-ES" : "en-US";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-card">
@@ -43,7 +44,7 @@ export default function HistoryView() {
               return (
                 <tr key={tr.id} className="border-b border-gray-50 last:border-0">
                   <td className="px-5 py-3 text-gray-500 text-xs">
-                    {d.toLocaleString("ko-KR")}
+                    {d.toLocaleString(locale)}
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-2">

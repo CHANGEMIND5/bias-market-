@@ -18,7 +18,7 @@ import { updateShareStats } from "./data/shareStats";
 import { createTrade } from "./data/trades";
 import { todayString } from "./format";
 import { DEFAULT_GAME, GameData, loadGame, saveGame, withVisit } from "./game";
-import { useLang } from "./i18n";
+import { Tfn, TKey, useLang } from "./i18n";
 import { initialState } from "./storage";
 import { AppState, Holding, MarketState, Trade } from "./types";
 
@@ -73,18 +73,18 @@ interface StoreValue {
 const StoreContext = createContext<StoreValue | null>(null);
 
 const XP_PER_LEVEL = 500;
-const LEVEL_TITLES: [number, string][] = [
-  [1, "새싹 팬"],
-  [3, "열혈 팬"],
-  [6, "홈마스터"],
-  [10, "팬마스터"],
-  [20, "레전드 팬"],
+const LEVEL_TITLES: [number, TKey][] = [
+  [1, "lv.1"],
+  [3, "lv.3"],
+  [6, "lv.6"],
+  [10, "lv.10"],
+  [20, "lv.20"],
 ];
 
-function titleFor(level: number): string {
-  let t = LEVEL_TITLES[0][1];
-  for (const [lv, title] of LEVEL_TITLES) if (level >= lv) t = title;
-  return t;
+function titleFor(level: number, t: Tfn): string {
+  let key = LEVEL_TITLES[0][1];
+  for (const [lv, k] of LEVEL_TITLES) if (level >= lv) key = k;
+  return t(key);
 }
 
 let toastSeq = 0;
@@ -310,7 +310,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,
     level,
-    levelTitle: titleFor(level),
+    levelTitle: titleFor(level, t),
     xpInLevel: state.xp % XP_PER_LEVEL,
     xpPerLevel: XP_PER_LEVEL,
   };

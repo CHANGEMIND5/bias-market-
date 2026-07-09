@@ -80,7 +80,12 @@ export default function Sidebar({
     <aside className="w-full lg:w-60 shrink-0 flex flex-col gap-4">
       {/* Logo */}
       <div className="px-2 pt-1">
-        <h1 className="text-xl font-extrabold tracking-tight">Bias Market</h1>
+        <h1 className="text-xl font-extrabold tracking-tight">
+          Bias Market
+          <span className="ml-1.5 align-middle px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-600 text-[10px] font-bold tracking-wide">
+            BETA
+          </span>
+        </h1>
         <p className="text-xs text-gray-500 mt-0.5">{t("app.subtitle")}</p>
         <div className="mt-2">
           <LangSwitcher compact />
