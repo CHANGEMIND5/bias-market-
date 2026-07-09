@@ -19,8 +19,20 @@ export async function GET() {
     // 봇 실패가 상태 조회를 막으면 안 됨
   }
 
-  const markets = await prisma.market.findMany();
-  const marketMap = Object.fromEntries(markets.map((m) => [m.groupId, m]));
+  // 마켓 상태 + 그룹별 전체 유저 보유량 합계 (총 Fan Shares 지표용)
+  const [markets, heldAgg] = await Promise.all([
+    prisma.market.findMany(),
+    prisma.holding.groupBy({ by: ["groupId"], _sum: { shares: true } }),
+  ]);
+  const heldMap = new Map(
+    heldAgg.map((h: any) => [h.groupId, h._sum?.shares ?? 0])
+  );
+  const marketMap = Object.fromEntries(
+    markets.map((m) => [
+      m.groupId,
+      { ...m, userHeldShares: heldMap.get(m.groupId) ?? 0 },
+    ])
+  );
 
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;

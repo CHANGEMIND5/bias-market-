@@ -60,7 +60,11 @@ async function runOneRound(roundAtMs: number): Promise<void> {
     const at = new Date(
       Math.min(Date.now(), roundAtMs) - Math.floor(Math.random() * 8 * 60_000)
     );
-    const isBuy = Math.random() < BUY_PROBABILITY;
+    // 총량 보존: 시스템은 자기가 보유한 shares 안에서만 매도 가능.
+    // 보유분이 없으면 매수로 전환 (Fan Shares를 새로 발행하지 않음)
+    const wantsSell = Math.random() >= BUY_PROBABILITY;
+    const canSell = m.systemShares > 1;
+    const isBuy = !(wantsSell && canSell);
 
     try {
       if (isBuy) {
@@ -80,6 +84,7 @@ async function runOneRound(roundAtMs: number): Promise<void> {
             data: {
               fanReserve: q.newFanReserve,
               shareReserve: q.newShareReserve,
+              systemShares: { increment: q.sharesOut }, // 풀 → 시스템 보유
               volume24h: { increment: amount },
             },
           }),
@@ -100,7 +105,9 @@ async function runOneRound(roundAtMs: number): Promise<void> {
         ]);
       } else {
         // 매도: Fan$ 50~1,500 상당의 Fan Shares, 가격 영향 0.5% 이하
+        // 시스템 보유분 한도 내에서만 (총 Fan Shares 고정 유지)
         let shares = (MIN_FAN + Math.random() * (MAX_FAN - MIN_FAN)) / price;
+        shares = Math.min(shares, m.systemShares);
         shares = Math.min(shares, m.shareReserve * (MAX_IMPACT_PCT / 100));
         let q = quoteSell(m, shares);
         while (q && q.priceImpact > MAX_IMPACT_PCT && shares * price > 20) {
@@ -115,6 +122,7 @@ async function runOneRound(roundAtMs: number): Promise<void> {
             data: {
               fanReserve: q.newFanReserve,
               shareReserve: q.newShareReserve,
+              systemShares: { decrement: shares }, // 시스템 보유 → 풀
               volume24h: { increment: q.fanOutBeforeFee },
             },
           }),

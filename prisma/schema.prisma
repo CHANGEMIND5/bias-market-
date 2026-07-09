@@ -62,6 +62,7 @@ model Market {
   groupId      String @id
   fanReserve   Float
   shareReserve Float
+  systemShares Float  @default(0) // marketActivityBot이 보유한 Fan Shares (총량 보존용)
   baseline1h   Float
   baseline24h  Float
   baseline7d   Float

@@ -53,11 +53,23 @@ export default function MarketDetailPage() {
   const rank = battleEntry?.rank ?? 0;
   const battlePts = battleEntry?.score ?? 0;
 
+  // 총 Fan Shares 지표 — 총량은 고정 (풀 + 유저 보유 + 시스템 보유)
+  const myShares = state.holdings[group.id]?.shares ?? 0;
+  const userHeld = m.userHeldShares ?? 0;
+  const myRatio = (myShares / TOTAL_SHARES) * 100;
+
   const stats: [string, string][] = [
-    ["팬덤 가치", `Fan$ ${fmtCompact(price * TOTAL_SHARES)}`],
-    ["풀 가치", `Fan$ ${fmtCompact(poolValue)}`],
+    ["팬덤 가치 (Fandom Value)", `Fan$ ${fmtCompact(price * TOTAL_SHARES)}`],
     ["24h 거래량", `Fan$ ${fmtCompact(m.volume24h)}`],
-    ["보유자", `${fmtInt(m.holders)}명`],
+    ["총 Fan Shares", fmtCompact(TOTAL_SHARES)],
+    ["풀 잔여량 (Pool Shares)", fmtCompact(m.shareReserve)],
+    ["유저 보유량", fmtCompact(userHeld)],
+    ["보유자 수", `${fmtInt(m.holders)}명`],
+    [
+      "내 보유 비율",
+      myShares > 0 ? `${myRatio < 0.001 ? "<0.001" : myRatio.toFixed(3)}%` : "0%",
+    ],
+    ["풀 가치 (Pool Value)", `Fan$ ${fmtCompact(poolValue)}`],
   ];
 
   return (
@@ -107,7 +119,7 @@ export default function MarketDetailPage() {
               </p>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-gray-100 pt-4">
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-3 border-t border-gray-100 pt-4">
             {stats.map(([label, value]) => (
               <div key={label}>
                 <p className="text-[11px] text-gray-400">{label}</p>
@@ -115,6 +127,12 @@ export default function MarketDetailPage() {
               </div>
             ))}
           </div>
+          <p className="mt-3 text-[10px] text-gray-300 leading-relaxed">
+            Fan Shares는 Bias Market 안에서만 사용하는 가상 팬덤 자산이며, 실제
+            주식·소유권·투자상품을 의미하지 않습니다. 총 Fan Shares는 종목당{" "}
+            {fmtInt(TOTAL_SHARES)}개로 고정되어 있고, 거래 시 풀과 보유자 사이를
+            이동할 뿐 새로 발행되거나 소각되지 않습니다.
+          </p>
         </div>
 
         {/* Main grid — 모바일 순서: 거래 패널 → 차트 → 배틀 요약 → 최근 거래 → 그룹 정보 */}

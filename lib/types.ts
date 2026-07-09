@@ -24,7 +24,9 @@ export interface Group {
 export interface MarketState {
   groupId: string;
   fanReserve: number; // x — Fan$ in the pool
-  shareReserve: number; // y — Fan Shares in the pool
+  shareReserve: number; // y — Fan Shares in the pool (풀 잔여량)
+  systemShares?: number; // 시스템 봇 보유량 (총량 보존)
+  userHeldShares?: number; // 전체 유저 보유량 합계 (서버 집계)
   baseline1h: number; // price 1h ago (for % change)
   baseline24h: number;
   baseline7d: number;
