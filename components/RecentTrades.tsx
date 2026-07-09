@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getTrades } from "@/lib/data/trades";
 import { fmt, fmtShares } from "@/lib/format";
 
 interface Row {
@@ -32,9 +33,7 @@ export default function RecentTrades({
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/trades?groupId=${encodeURIComponent(groupId)}`);
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await getTrades(groupId);
       if (Array.isArray(data.trades)) setRows(data.trades);
     } catch {
       // keep last data

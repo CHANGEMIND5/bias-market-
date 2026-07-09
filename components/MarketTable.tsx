@@ -128,7 +128,66 @@ export default function MarketTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* 모바일: 카드 리스트 */}
+      <div className="md:hidden px-4 pb-2 flex flex-col gap-2">
+        {visible.length === 0 && (
+          <p className="py-8 text-center text-sm text-gray-400">
+            {showFavs || favoritesOnly
+              ? "관심 목록이 비어 있어요."
+              : "표시할 그룹이 없습니다."}
+          </p>
+        )}
+        {visible.map((r) => (
+          <div
+            key={r.group.id}
+            onClick={() => onSelect(r.group.id)}
+            className="rounded-xl border border-gray-100 p-3 flex items-center gap-3 active:bg-gray-50"
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite(r.group.id);
+              }}
+              aria-label="관심 목록 토글"
+              className={`text-lg ${r.fav ? "text-amber-400" : "text-gray-300"}`}
+            >
+              {r.fav ? "★" : "☆"}
+            </button>
+            <span className="w-5 text-xs text-gray-400">{r.rank}</span>
+            <Emblem group={r.group} size={30} />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate">
+                {r.group.name}
+                {r.group.category === "member" && r.group.parentGroup && (
+                  <span className="ml-1.5 text-[10px] text-gray-400 font-medium">
+                    {GROUP_MAP[r.group.parentGroup]?.name}
+                  </span>
+                )}
+              </p>
+              <p className="text-[11px] text-gray-400">
+                Fan$ {fmt(r.price)} · 거래량 {fmtCompact(r.volume)}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className={`text-sm font-bold ${changeColor(r.ch24h)}`}>
+                {fmtPct(r.ch24h)}
+              </p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(r.group.id);
+                }}
+                className="mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold"
+              >
+                거래하기
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 데스크톱: 테이블 */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="text-xs text-gray-400 border-b border-gray-100">

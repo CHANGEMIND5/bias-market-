@@ -198,13 +198,13 @@ export default function Sidebar({
         </button>
       )}
 
-      {/* Navigation */}
-      <nav className="bg-white rounded-2xl border border-gray-200 shadow-card p-2">
+      {/* Navigation — 모바일: 가로 스크롤 칩, 데스크톱: 세로 목록 */}
+      <nav className="bg-white rounded-2xl border border-gray-200 shadow-card p-2 flex lg:flex-col gap-1 overflow-x-auto">
         {NAV.map((item) => (
           <button
             key={item.view}
             onClick={() => onNavigate(item.view)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+            className={`shrink-0 lg:w-full flex items-center gap-2 lg:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
               view === item.view
                 ? "bg-emerald-50 text-emerald-700"
                 : "text-gray-600 hover:bg-gray-50"

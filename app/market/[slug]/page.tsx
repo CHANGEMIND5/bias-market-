@@ -117,22 +117,22 @@ export default function MarketDetailPage() {
           </div>
         </div>
 
-        {/* Main grid */}
+        {/* Main grid — 모바일 순서: 거래 패널 → 차트 → 배틀 요약 → 최근 거래 → 그룹 정보 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* Trade panel — first on mobile, right on desktop */}
           <aside className="lg:col-span-4 lg:order-2 flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
               <TradePanel group={group} onBuySuccess={() => setShareOpen(true)} />
             </div>
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
+            <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 shadow-card p-5">
               <GroupInfoCard group={group} />
             </div>
           </aside>
 
           {/* Chart + recent trades */}
           <section className="lg:col-span-8 lg:order-1 flex flex-col gap-5">
-            {/* 차트 위 요약 카드 — 내용 수정은 여기서 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 차트 위 요약 카드 — 내용 수정은 여기서 (모바일에선 차트 다음) */}
+            <div className="order-2 lg:order-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white rounded-2xl border border-gray-200 shadow-card px-4 py-3 flex items-center gap-3">
                 <span className="text-lg" aria-hidden>
                   {ch24 >= 0 ? "📈" : "📉"}
@@ -164,11 +164,15 @@ export default function MarketDetailPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
+            <div className="order-1 lg:order-2 bg-white rounded-2xl border border-gray-200 shadow-card p-4 sm:p-5">
               <PriceChart groupId={group.id} price={price} />
             </div>
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
+            <div className="order-3 bg-white rounded-2xl border border-gray-200 shadow-card p-4 sm:p-5">
               <RecentTrades groupId={group.id} price={price} />
+            </div>
+            {/* 그룹 정보 — 모바일에서는 맨 아래 */}
+            <div className="order-4 lg:hidden bg-white rounded-2xl border border-gray-200 shadow-card p-4 sm:p-5">
+              <GroupInfoCard group={group} />
             </div>
           </section>
         </div>

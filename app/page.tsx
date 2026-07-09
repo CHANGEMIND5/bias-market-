@@ -37,22 +37,26 @@ export default function Page() {
           style={{ opacity: hydrated ? 1 : 0.4 }}
         >
           {view === "market" && (
-            <>
-              <MarketTable selectedId="" onSelect={goToMarket} />
-
-              {/* 팬덤 게임 레이어 */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                <div className="xl:col-span-2 flex flex-col gap-5">
-                  <BattleCard onSelect={goToMarket} />
-                  <BiasDashboard onSelect={goToMarket} />
-                  <MarketNews onSelect={goToMarket} />
-                </div>
-                <div className="flex flex-col gap-5">
-                  <FanProfileCard />
-                  <BadgesCard />
-                </div>
+            /* 모바일 순서: 배틀 → 최애 대시보드 → 마켓 테이블 → 뉴스 → 프로필 → 뱃지
+               데스크톱: 테이블 전체 폭 → (배틀/대시보드/뉴스 | 프로필/뱃지) 2단 */
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+              <div className="order-3 xl:order-1 xl:col-span-3">
+                <MarketTable selectedId="" onSelect={goToMarket} />
               </div>
-            </>
+              <div className="order-1 xl:order-2 xl:col-span-2">
+                <BattleCard onSelect={goToMarket} />
+              </div>
+              <div className="order-5 xl:order-3 xl:row-span-3 flex flex-col gap-5">
+                <FanProfileCard />
+                <BadgesCard />
+              </div>
+              <div className="order-2 xl:order-4 xl:col-span-2">
+                <BiasDashboard onSelect={goToMarket} />
+              </div>
+              <div className="order-4 xl:order-5 xl:col-span-2">
+                <MarketNews onSelect={goToMarket} />
+              </div>
+            </div>
           )}
 
           {view === "watchlist" && <BiasDashboard onSelect={goToMarket} />}

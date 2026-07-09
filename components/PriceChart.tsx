@@ -13,6 +13,7 @@ import {
   UTCTimestamp,
   createChart,
 } from "lightweight-charts";
+import { getMarketHistory } from "@/lib/data/markets";
 import { fmt, fmtCompact } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
@@ -204,11 +205,7 @@ export default function PriceChart({
   const load = useCallback(async () => {
     try {
       const minutes = TIMEFRAMES[tf].minutes;
-      const res = await fetch(
-        `/api/history?groupId=${encodeURIComponent(groupId)}&minutes=${minutes}`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await getMarketHistory(groupId, minutes);
       if (!Array.isArray(data.candles) || !candleRef.current || !volumeRef.current) return;
 
       const apiCandles = data.candles as ApiCandle[];

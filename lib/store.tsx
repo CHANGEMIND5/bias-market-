@@ -10,6 +10,12 @@ import React, {
 } from "react";
 import { useSession } from "next-auth/react";
 import { spotPrice } from "./amm";
+import { sendJSON } from "./data/api";
+import { unlockBadge } from "./data/badges";
+import { updateFavorite } from "./data/favorites";
+import { fetchAppState } from "./data/markets";
+import { updateShareStats } from "./data/shareStats";
+import { createTrade } from "./data/trades";
 import { todayString } from "./format";
 import { DEFAULT_GAME, GameData, loadGame, saveGame, withVisit } from "./game";
 import { initialState } from "./storage";
@@ -82,15 +88,6 @@ function titleFor(level: number): string {
 
 let toastSeq = 0;
 
-async function postJSON(url: string, body?: unknown): Promise<any> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  return res.json();
-}
-
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const loggedIn = status === "authenticated";
@@ -111,18 +108,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const recordShareCopy = useCallback(() => {
-    setGame((g) => saveGame({ ...g, shareCopies: g.shareCopies + 1 }));
+    setGame((g) => updateShareStats(g));
   }, []);
 
   const markBadgeEarned = useCallback((id: string) => {
-    setGame((g) =>
-      g.badgeEarned[id]
-        ? g
-        : saveGame({
-            ...g,
-            badgeEarned: { ...g.badgeEarned, [id]: todayString() },
-          })
-    );
+    setGame((g) => unlockBadge(g, id));
   }, []);
 
   const showToast = useCallback((type: ToastMsg["type"], text: string) => {
@@ -133,9 +123,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/state");
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await fetchAppState();
       setState((s) => ({
         ...s,
         markets: data.markets as Record<string, MarketState>,
@@ -190,7 +178,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     async (groupId: string, fanIn: number): Promise<TradeResult> => {
       if (!loggedIn) return { ok: false, error: "Google 로그인 후 거래할 수 있어요." };
       try {
-        const data = await postJSON("/api/trade", { groupId, side: "buy", amount: fanIn });
+        const data = await createTrade({ groupId, side: "buy", amount: fanIn });
         if (!data.ok) return { ok: false, error: data.error ?? "매수에 실패했습니다." };
         applyTradeResponse(groupId, data);
         return { ok: true, trade: data.trade as Trade };
@@ -205,7 +193,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     async (groupId: string, sharesIn: number): Promise<TradeResult> => {
       if (!loggedIn) return { ok: false, error: "Google 로그인 후 거래할 수 있어요." };
       try {
-        const data = await postJSON("/api/trade", { groupId, side: "sell", amount: sharesIn });
+        const data = await createTrade({ groupId, side: "sell", amount: sharesIn });
         if (!data.ok) return { ok: false, error: data.error ?? "매도에 실패했습니다." };
         applyTradeResponse(groupId, data);
         return { ok: true, trade: data.trade as Trade };
@@ -230,7 +218,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           : [...s.favorites, groupId],
       }));
       try {
-        const data = await postJSON("/api/favorite", { groupId });
+        const data = await updateFavorite(groupId);
         if (data.ok) setState((s) => ({ ...s, favorites: data.favorites }));
       } catch {
         // next refresh will reconcile
@@ -244,7 +232,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const claimDailyReward = useCallback(async (): Promise<ClaimResult> => {
     if (!loggedIn) return { ok: false, error: "Google 로그인 후 받을 수 있어요." };
     try {
-      const data = await postJSON("/api/reward");
+      const data = await sendJSON("/api/reward");
       if (!data.ok) return { ok: false, error: data.error ?? "보상을 받을 수 없습니다." };
       setState((s) => ({
         ...s,
@@ -262,12 +250,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     async (name: string): Promise<ClaimResult> => {
       if (!loggedIn) return { ok: false, error: "로그인이 필요해요." };
       try {
-        const res = await fetch("/api/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
-        });
-        const data = await res.json();
+        const data = await sendJSON("/api/profile", { name }, "PATCH");
         if (!data.ok) return { ok: false, error: data.error ?? "닉네임을 바꿀 수 없습니다." };
         setUserName(data.name);
         return { ok: true };
@@ -282,12 +265,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     async (avatar: number): Promise<ClaimResult> => {
       if (!loggedIn) return { ok: false, error: "로그인이 필요해요." };
       try {
-        const res = await fetch("/api/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avatar }),
-        });
-        const data = await res.json();
+        const data = await sendJSON("/api/profile", { avatar }, "PATCH");
         if (!data.ok) return { ok: false, error: data.error ?? "아바타를 바꿀 수 없습니다." };
         setUserImage(data.image ?? null);
         return { ok: true };
