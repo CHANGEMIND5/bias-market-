@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import LangSwitcher from "./LangSwitcher";
 import UserAvatar from "./UserAvatar";
 import { AVATAR_PRESETS } from "@/lib/avatars";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
+import { TKey, useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
 export type View =
@@ -15,13 +17,13 @@ export type View =
   | "community"
   | "missions";
 
-const NAV: { view: View; label: string; icon: string }[] = [
-  { view: "market", label: "전체 마켓", icon: "📊" },
-  { view: "watchlist", label: "관심 목록", icon: "🤍" },
-  { view: "portfolio", label: "포트폴리오", icon: "📁" },
-  { view: "history", label: "거래 내역", icon: "🕓" },
-  { view: "community", label: "커뮤니티", icon: "💬" },
-  { view: "missions", label: "미션 & 보상", icon: "🎁" },
+const NAV: { view: View; labelKey: TKey; icon: string }[] = [
+  { view: "market", labelKey: "nav.market", icon: "📊" },
+  { view: "watchlist", labelKey: "nav.watchlist", icon: "🤍" },
+  { view: "portfolio", labelKey: "nav.portfolio", icon: "📁" },
+  { view: "history", labelKey: "nav.history", icon: "🕓" },
+  { view: "community", labelKey: "nav.community", icon: "💬" },
+  { view: "missions", labelKey: "nav.missions", icon: "🎁" },
 ];
 
 export default function Sidebar({
@@ -38,6 +40,7 @@ export default function Sidebar({
     userName, userImage, updateName, updateAvatar,
   } = useStore();
   const { data: session } = useSession();
+  const { t } = useLang();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -77,9 +80,10 @@ export default function Sidebar({
       {/* Logo */}
       <div className="px-2 pt-1">
         <h1 className="text-xl font-extrabold tracking-tight">Bias Market</h1>
-        <p className="text-xs text-gray-500 mt-0.5">
-          K-pop 팬덤 트레이딩 시뮬레이터
-        </p>
+        <p className="text-xs text-gray-500 mt-0.5">{t("app.subtitle")}</p>
+        <div className="mt-2">
+          <LangSwitcher compact />
+        </div>
       </div>
 
       {/* Account */}
@@ -108,20 +112,20 @@ export default function Sidebar({
                   }}
                   autoFocus
                   className="w-full min-w-0 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold outline-none focus:border-emerald-400"
-                  placeholder="닉네임 (2~20자)"
+                  placeholder={t("side.nickPlaceholder")}
                 />
                 <button
                   onClick={saveName}
                   disabled={savingName}
                   className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 shrink-0 disabled:opacity-50"
                 >
-                  저장
+                  {t("save")}
                 </button>
                 <button
                   onClick={() => setEditingName(false)}
                   className="text-[11px] text-gray-400 hover:text-gray-600 shrink-0"
                 >
-                  취소
+                  {t("cancel")}
                 </button>
               </div>
             ) : (
@@ -150,7 +154,7 @@ export default function Sidebar({
               onClick={() => signOut()}
               className="text-[11px] text-gray-400 hover:text-gray-600 shrink-0"
             >
-              로그아웃
+              {t("side.logout")}
             </button>
           )}
           </div>
@@ -158,7 +162,7 @@ export default function Sidebar({
           {/* Avatar picker */}
           {avatarPickerOpen && (
             <div className="mt-3 border-t border-gray-100 pt-3">
-              <p className="text-[11px] text-gray-400 mb-2">아바타 선택</p>
+              <p className="text-[11px] text-gray-400 mb-2">{t("side.avatarPick")}</p>
               <div className="grid grid-cols-6 gap-2">
                 {AVATAR_PRESETS.map(([a, b], i) => (
                   <button
@@ -174,7 +178,7 @@ export default function Sidebar({
                 onClick={() => pickAvatar(-1)}
                 className="mt-2.5 w-full py-1.5 rounded-lg border border-gray-200 text-[11px] font-medium text-gray-500 hover:bg-gray-50"
               >
-                구글 프로필 사진 사용
+                {t("side.googlePhoto")}
               </button>
             </div>
           )}
@@ -194,7 +198,7 @@ export default function Sidebar({
           >
             G
           </span>
-          Google로 로그인
+          {t("side.login")}
         </button>
       )}
 
@@ -213,32 +217,32 @@ export default function Sidebar({
             <span className="text-base leading-none" aria-hidden>
               {item.icon}
             </span>
-            {item.label}
+            {t(item.labelKey)}
           </button>
         ))}
       </nav>
 
       {/* Balance card */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-4">
-        <p className="text-xs text-gray-500">보유 자산</p>
+        <p className="text-xs text-gray-500">{t("side.assets")}</p>
         <p className="text-xl font-bold text-emerald-600 mt-1">
           Fan$ {fmt(totalAssets, 0)}
         </p>
         <div className="mt-3 space-y-1.5 text-xs">
           <div className="flex justify-between">
-            <span className="text-gray-500">보유 Fan$</span>
+            <span className="text-gray-500">{t("side.fanBalance")}</span>
             <span className="font-medium">{fmt(state.balance, 0)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">평가 손익</span>
+            <span className="text-gray-500">{t("side.pnl")}</span>
             <span className={`font-medium ${changeColor(totalPnl)}`}>
               {totalPnl >= 0 ? "+" : ""}
               {fmt(totalPnl, 0)} ({fmtPct(pnlPct)})
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">보유 Fan Shares</span>
-            <span className="font-medium">{holdingCount} 종목</span>
+            <span className="text-gray-500">{t("side.heldShares")}</span>
+            <span className="font-medium">{t("side.items", { n: holdingCount })}</span>
           </div>
         </div>
         <button
@@ -253,7 +257,7 @@ export default function Sidebar({
               : "border-gray-200 bg-gray-50 text-gray-400"
           }`}
         >
-          {canClaimReward ? "🎁 일일 보상 받기 (+2,000)" : "오늘 보상 수령 완료"}
+          {canClaimReward ? t("side.claim") : t("side.claimed")}
         </button>
       </div>
 

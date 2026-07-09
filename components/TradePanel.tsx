@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { quoteBuy, quoteSell, spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtShares } from "@/lib/format";
-import { DISCLAIMER_KO, MIN_BUY, MIN_SELL } from "@/lib/mockData";
+import { useLang } from "@/lib/i18n";
+import { MIN_BUY, MIN_SELL } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 import { Group } from "@/lib/types";
 
@@ -16,6 +17,7 @@ export default function TradePanel({
   onBuySuccess: (info: { shares: number; fan: number }) => void;
 }) {
   const { state, buy, sell, showToast, loggedIn } = useStore();
+  const { t } = useLang();
   const [tab, setTab] = useState<"buy" | "sell">("buy");
   const [buyInput, setBuyInput] = useState("1000");
   const [sellInput, setSellInput] = useState("");
@@ -50,17 +52,17 @@ export default function TradePanel({
     buyAmount <= 0
       ? null
       : buyAmount < MIN_BUY
-      ? `최소 매수 금액은 ${MIN_BUY} Fan$입니다.`
+      ? t("trade.errMinBuy", { n: MIN_BUY })
       : buyAmount > state.balance
-      ? `보유 Fan$가 부족합니다. (보유: ${fmt(state.balance, 0)})`
+      ? t("trade.errBalance", { n: fmt(state.balance, 0) })
       : null;
   const sellError =
     sellAmount <= 0
       ? null
       : sellAmount < MIN_SELL
-      ? `최소 매도 수량은 ${MIN_SELL} Fan Share입니다.`
+      ? t("trade.errMinSell", { n: MIN_SELL })
       : sellAmount > owned + 1e-9
-      ? `보유 Fan Shares가 부족합니다. (보유: ${fmtShares(owned)})`
+      ? t("trade.errShares", { n: fmtShares(owned) })
       : null;
   const buyDisabled = pending || buyAmount <= 0 || !!buyError || !buyQuote;
   const sellDisabled = pending || sellAmount <= 0 || !!sellError || !sellQuote;
@@ -115,7 +117,7 @@ export default function TradePanel({
       onClick={() => signIn("google")}
       className="mt-4 w-full py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold transition-colors"
     >
-      Google로 로그인하고 거래하기
+      {t("trade.loginBtn")}
     </button>
   );
 
@@ -128,7 +130,7 @@ export default function TradePanel({
 
   return (
     <div>
-      <h3 className="text-base font-bold mb-3">거래하기</h3>
+      <h3 className="text-base font-bold mb-3">{t("trade.title")}</h3>
 
       {/* Tabs */}
       <div className="grid grid-cols-2 gap-1 rounded-xl border border-gray-200 p-1 mb-4">
@@ -140,7 +142,7 @@ export default function TradePanel({
               : "text-gray-500 hover:bg-gray-50"
           }`}
         >
-          매수
+          {t("buy")}
         </button>
         <button
           onClick={() => setTab("sell")}
@@ -150,13 +152,13 @@ export default function TradePanel({
               : "text-gray-500 hover:bg-gray-50"
           }`}
         >
-          매도
+          {t("sell")}
         </button>
       </div>
 
       {tab === "buy" ? (
         <>
-          <label className="text-xs text-gray-500">투입 금액 (Fan$)</label>
+          <label className="text-xs text-gray-500">{t("trade.buyAmount")}</label>
           <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 focus-within:border-emerald-400">
             <input
               type="number"
@@ -164,7 +166,7 @@ export default function TradePanel({
               value={buyInput}
               onChange={(e) => setBuyInput(e.target.value)}
               className="w-full py-2.5 text-sm font-semibold outline-none bg-transparent"
-              placeholder={`최소 ${MIN_BUY}`}
+              placeholder={t("trade.minPlaceholder", { n: MIN_BUY })}
             />
             <span className="text-xs text-gray-400 font-medium shrink-0">Fan$</span>
           </div>
@@ -182,11 +184,11 @@ export default function TradePanel({
               onClick={() => setBuyPct(1)}
               className="py-2 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50"
             >
-              전체
+              {t("all")}
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-gray-400 text-right">
-            보유 Fan$ {fmt(state.balance, 0)}
+            {t("trade.balance", { n: fmt(state.balance, 0) })}
           </p>
           {buyError && (
             <p className="mt-1 text-[11px] font-medium text-red-500">{buyError}</p>
@@ -195,16 +197,16 @@ export default function TradePanel({
           {/* 거래 후 예상 */}
           <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2.5">
             <p className="text-xs font-bold text-gray-600 pb-1.5 mb-1 border-b border-gray-200/70">
-              거래 후 예상
+              {t("trade.preview")}
             </p>
             {row(
-              "보유량",
+              t("trade.holdings"),
               buyQuote
                 ? `${fmtShares(owned)} → ${fmtShares(buyAfterShares)} Shares`
                 : `${fmtShares(owned)} Shares`
             )}
             {row(
-              "평균 매입가",
+              t("trade.avgPrice"),
               buyQuote && buyAfterAvg !== null
                 ? `${avgBuy !== null ? `Fan$ ${fmt(avgBuy)} → ` : ""}Fan$ ${fmt(buyAfterAvg)}`
                 : avgBuy !== null
@@ -212,19 +214,19 @@ export default function TradePanel({
                 : "—"
             )}
             {row(
-              "예상 수령",
+              t("trade.receive"),
               buyQuote ? `${fmtShares(buyQuote.sharesOut)} Fan Shares` : "—",
               "font-bold"
             )}
-            {row("수수료 (0.30%)", buyQuote ? `Fan$ ${fmt(buyQuote.fee)}` : "—")}
-            {row("실행 가격", buyQuote ? `Fan$ ${fmt(buyQuote.execPrice)}` : `Fan$ ${fmt(price)}`)}
+            {row(t("trade.fee"), buyQuote ? `Fan$ ${fmt(buyQuote.fee)}` : "—")}
+            {row(t("trade.execPrice"), buyQuote ? `Fan$ ${fmt(buyQuote.execPrice)}` : `Fan$ ${fmt(price)}`)}
             {row(
-              "가격 영향",
+              t("trade.impact"),
               buyQuote ? `${buyQuote.priceImpact.toFixed(2)}%` : "—",
               buyQuote && buyQuote.priceImpact > 1 ? "font-medium text-amber-600" : "font-medium"
             )}
             {row(
-              "팬덤 영향력",
+              t("trade.influence"),
               buyInfluenceGain !== null ? `+${buyInfluenceGain} pts` : "—",
               "font-medium text-violet-600"
             )}
@@ -236,7 +238,7 @@ export default function TradePanel({
               disabled={buyDisabled}
               className="mt-4 w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
             >
-              {pending ? "체결 중..." : "Fan Shares 매수하기"}
+              {pending ? t("trade.pending") : t("trade.buyBtn")}
             </button>
           ) : (
             loginButton
@@ -245,9 +247,9 @@ export default function TradePanel({
       ) : (
         <>
           <div className="flex justify-between items-baseline">
-            <label className="text-xs text-gray-500">매도 수량 (Fan Shares)</label>
+            <label className="text-xs text-gray-500">{t("trade.sellAmount")}</label>
             <span className="text-[11px] text-gray-400">
-              보유: {fmtShares(owned)} FS
+              {t("trade.owned", { n: fmtShares(owned) })}
             </span>
           </div>
           <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 focus-within:border-red-300">
@@ -257,7 +259,7 @@ export default function TradePanel({
               value={sellInput}
               onChange={(e) => setSellInput(e.target.value)}
               className="w-full py-2.5 text-sm font-semibold outline-none bg-transparent"
-              placeholder={`최소 ${MIN_SELL}`}
+              placeholder={t("trade.minPlaceholder", { n: MIN_SELL })}
             />
             <span className="text-xs text-gray-400 font-medium shrink-0">FS</span>
           </div>
@@ -275,7 +277,7 @@ export default function TradePanel({
               onClick={() => setSellPct(1)}
               className="py-2 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50"
             >
-              전체
+              {t("all")}
             </button>
           </div>
           {sellError && (
@@ -285,31 +287,31 @@ export default function TradePanel({
           {/* 거래 후 예상 */}
           <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2.5">
             <p className="text-xs font-bold text-gray-600 pb-1.5 mb-1 border-b border-gray-200/70">
-              거래 후 예상
+              {t("trade.preview")}
             </p>
             {row(
-              "보유량",
+              t("trade.holdings"),
               sellQuote
                 ? `${fmtShares(owned)} → ${fmtShares(sellAfterShares)} Shares`
                 : `${fmtShares(owned)} Shares`
             )}
             {row(
-              "평균 매입가",
-              avgBuy !== null ? `Fan$ ${fmt(avgBuy)} (유지)` : "—"
+              t("trade.avgPrice"),
+              avgBuy !== null ? `Fan$ ${fmt(avgBuy)} ${t("trade.avgKept")}` : "—"
             )}
             {row(
-              "예상 수령",
+              t("trade.receive"),
               sellQuote ? `Fan$ ${fmt(sellQuote.fanOut)}` : "—",
               "font-bold"
             )}
-            {row("수수료 (0.30%)", sellQuote ? `Fan$ ${fmt(sellQuote.fee)}` : "—")}
-            {row("실행 가격", sellQuote ? `Fan$ ${fmt(sellQuote.execPrice)}` : `Fan$ ${fmt(price)}`)}
+            {row(t("trade.fee"), sellQuote ? `Fan$ ${fmt(sellQuote.fee)}` : "—")}
+            {row(t("trade.execPrice"), sellQuote ? `Fan$ ${fmt(sellQuote.execPrice)}` : `Fan$ ${fmt(price)}`)}
             {row(
-              "가격 영향",
+              t("trade.impact"),
               sellQuote ? `-${sellQuote.priceImpact.toFixed(2)}%` : "—",
               sellQuote && sellQuote.priceImpact > 1 ? "font-medium text-amber-600" : "font-medium"
             )}
-            {row("팬덤 영향력", sellQuote ? "+10 pts" : "—", "font-medium text-violet-600")}
+            {row(t("trade.influence"), sellQuote ? "+10 pts" : "—", "font-medium text-violet-600")}
           </div>
 
           {loggedIn ? (
@@ -318,7 +320,7 @@ export default function TradePanel({
               disabled={sellDisabled}
               className="mt-4 w-full py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
             >
-              {pending ? "체결 중..." : "Fan Shares 매도하기"}
+              {pending ? t("trade.pending") : t("trade.sellBtn")}
             </button>
           ) : (
             loginButton
@@ -327,7 +329,7 @@ export default function TradePanel({
       )}
 
       <p className="mt-3 text-[10px] leading-relaxed text-gray-400">
-        🛡 시장가 주문은 현재 풀 상태 기준으로 즉시 체결됩니다. {DISCLAIMER_KO}
+        {t("trade.note")} {t("disclaimer")}
       </p>
     </div>
   );

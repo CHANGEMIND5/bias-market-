@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Emblem from "./Emblem";
 import { battleRanking } from "@/lib/battle";
 import { changeColor, fmtCompact, fmtInt, fmtPct } from "@/lib/format";
+import { TKey, useLang } from "@/lib/i18n";
 import { GROUP_MAP } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
@@ -18,11 +19,11 @@ function countdownToMidnight(now: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-const CRITERIA: [string, string][] = [
-  ["24h 상승률", "35%"],
-  ["24h 거래량", "30%"],
-  ["보유자 수", "20%"],
-  ["공유/활동 점수", "15%"],
+const CRITERIA: [TKey, string][] = [
+  ["battle.cChange", "35%"],
+  ["battle.cVolume", "30%"],
+  ["battle.cHolders", "20%"],
+  ["battle.cSocial", "15%"],
 ];
 
 export default function BattleCard({
@@ -31,6 +32,7 @@ export default function BattleCard({
   onSelect: (id: string) => void;
 }) {
   const { state } = useStore();
+  const { t } = useLang();
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState<number | null>(null);
 
@@ -49,13 +51,13 @@ export default function BattleCard({
     <section className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-lg font-bold">오늘의 팬덤 배틀</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            24시간 동안 가장 강한 팬덤을 실시간으로 확인하세요.
-          </p>
+          <h2 className="text-lg font-bold">{t("battle.title")}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{t("battle.subtitle")}</p>
         </div>
         <span className="px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 text-xs font-bold">
-          시즌 종료까지 {now !== null ? countdownToMidnight(now) : "--:--:--"}
+          {t("battle.countdown", {
+            t: now !== null ? countdownToMidnight(now) : "--:--:--",
+          })}
         </span>
       </div>
 
@@ -115,7 +117,7 @@ export default function BattleCard({
               {fmtCompact(e.volume)} Fan$
             </span>
             <span className="hidden sm:block w-16 text-right text-xs text-gray-400">
-              {fmtInt(e.holders)}명
+              {t("battle.holdersUnit", { n: fmtInt(e.holders) })}
             </span>
           </button>
         ))}
@@ -125,18 +127,18 @@ export default function BattleCard({
         onClick={() => setExpanded((v) => !v)}
         className="mt-3 w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold transition-colors"
       >
-        {expanded ? "접기" : "배틀 자세히 보기"}
+        {expanded ? t("battle.collapse") : t("battle.detail")}
       </button>
 
       {/* 점수 산정 기준 */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-gray-400 mr-1">점수 산정 기준</span>
-        {CRITERIA.map(([label, w]) => (
+        <span className="text-[11px] text-gray-400 mr-1">{t("battle.criteria")}</span>
+        {CRITERIA.map(([labelKey, w]) => (
           <span
-            key={label}
+            key={labelKey}
             className="px-2 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[11px] text-gray-500"
           >
-            {label} <b className="text-gray-700">{w}</b>
+            {t(labelKey)} <b className="text-gray-700">{w}</b>
           </span>
         ))}
       </div>

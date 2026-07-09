@@ -13,12 +13,14 @@ import MarketTable from "@/components/MarketTable";
 import MissionsView from "@/components/MissionsView";
 import PortfolioCard from "@/components/PortfolioCard";
 import Sidebar, { View } from "@/components/Sidebar";
-import { DISCLAIMER_EN, DISCLAIMER_KO, GROUP_MAP } from "@/lib/mockData";
+import { DISCLAIMER_EN, GROUP_MAP } from "@/lib/mockData";
+import { useLang } from "@/lib/i18n";
 import { slugFor } from "@/lib/slug";
 import { useStore } from "@/lib/store";
 
 export default function Page() {
   const { hydrated } = useStore();
+  const { t } = useLang();
   const router = useRouter();
   const [view, setView] = useState<View>("market");
 
@@ -68,11 +70,11 @@ export default function Page() {
 
           {/* Footer disclaimer */}
           <footer className="text-[11px] leading-relaxed text-gray-400 px-2 pb-6">
-            <p>{DISCLAIMER_KO}</p>
+            <p>{t("disclaimer")}</p>
             <p className="mt-1.5">{DISCLAIMER_EN}</p>
             <p className="mt-2">
               <a href="/privacy" className="underline hover:text-gray-600">
-                개인정보처리방침
+                {t("footer.privacy")}
               </a>
             </p>
           </footer>

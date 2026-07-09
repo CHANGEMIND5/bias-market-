@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Emblem from "./Emblem";
 import { spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtCompact, fmtPct } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 import { GROUPS, GROUP_MAP, TOTAL_SHARES } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
@@ -24,6 +25,7 @@ export default function MarketTable({
   favoritesOnly?: boolean;
 }) {
   const { state, toggleFavorite } = useStore();
+  const { t } = useLang();
   const [filter, setFilter] = useState<Filter>("up");
   const [catFilter, setCatFilter] = useState<CatFilter>("all");
   const [showFavs, setShowFavs] = useState(favoritesOnly);
@@ -79,19 +81,17 @@ export default function MarketTable({
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 pb-2">
         <div>
           <h2 className="text-lg font-bold">
-            {favoritesOnly ? "관심 목록" : "전체 팬쉐어"}
+            {favoritesOnly ? t("nav.watchlist") : t("table.title")}
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            모든 K-pop 그룹의 Fan Share 가격과 팬덤 가치를 확인하세요.
-          </p>
+          <p className="text-sm text-gray-500 mt-0.5">{t("table.subtitle")}</p>
         </div>
         <div className="flex items-center gap-1 flex-wrap">
           <div className="flex items-center gap-1 rounded-xl border border-gray-200 p-0.5 mr-1">
             {(
               [
-                ["all", "전체"],
-                ["group", "그룹"],
-                ["member", "멤버"],
+                ["all", t("cat.all")],
+                ["group", t("cat.group")],
+                ["member", t("cat.member")],
               ] as [CatFilter, string][]
             ).map(([key, label]) => (
               <button
@@ -116,14 +116,14 @@ export default function MarketTable({
                   : "border-gray-200 text-gray-500 hover:bg-gray-50"
               }`}
             >
-              ☆ 관심
+              {t("table.favs")}
             </button>
           )}
           <div className="flex items-center gap-1 rounded-xl border border-gray-200 p-0.5">
-            {filterBtn("up", "상승")}
-            {filterBtn("down", "하락")}
-            {filterBtn("volume", "거래량")}
-            {filterBtn("name", "이름")}
+            {filterBtn("up", t("filter.up"))}
+            {filterBtn("down", t("filter.down"))}
+            {filterBtn("volume", t("filter.volume"))}
+            {filterBtn("name", t("filter.name"))}
           </div>
         </div>
       </div>
@@ -132,9 +132,7 @@ export default function MarketTable({
       <div className="md:hidden px-4 pb-2 flex flex-col gap-2">
         {visible.length === 0 && (
           <p className="py-8 text-center text-sm text-gray-400">
-            {showFavs || favoritesOnly
-              ? "관심 목록이 비어 있어요."
-              : "표시할 그룹이 없습니다."}
+            {showFavs || favoritesOnly ? t("table.emptyFavs") : t("table.empty")}
           </p>
         )}
         {visible.map((r) => (
@@ -165,7 +163,7 @@ export default function MarketTable({
                 )}
               </p>
               <p className="text-[11px] text-gray-400">
-                Fan$ {fmt(r.price)} · 거래량 {fmtCompact(r.volume)}
+                Fan$ {fmt(r.price)} · {t("table.volumeShort")} {fmtCompact(r.volume)}
               </p>
             </div>
             <div className="text-right shrink-0">
@@ -179,7 +177,7 @@ export default function MarketTable({
                 }}
                 className="mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold"
               >
-                거래하기
+                {t("table.tradeBtn")}
               </button>
             </div>
           </div>
@@ -193,23 +191,21 @@ export default function MarketTable({
             <tr className="text-xs text-gray-400 border-b border-gray-100">
               <th className="w-10" />
               <th className="text-left font-medium py-3 px-2 w-10">#</th>
-              <th className="text-left font-medium py-3 px-2">그룹</th>
-              <th className="text-right font-medium py-3 px-2">현재 가격 (Fan$)</th>
-              <th className="text-right font-medium py-3 px-2">1시간</th>
-              <th className="text-right font-medium py-3 px-2">24시간</th>
-              <th className="text-right font-medium py-3 px-2">7일</th>
-              <th className="text-right font-medium py-3 px-2">팬덤 가치</th>
-              <th className="text-right font-medium py-3 px-2">24h 거래량</th>
-              <th className="text-right font-medium py-3 px-4">거래</th>
+              <th className="text-left font-medium py-3 px-2">{t("col.group")}</th>
+              <th className="text-right font-medium py-3 px-2">{t("col.price")}</th>
+              <th className="text-right font-medium py-3 px-2">{t("col.1h")}</th>
+              <th className="text-right font-medium py-3 px-2">{t("col.24h")}</th>
+              <th className="text-right font-medium py-3 px-2">{t("col.7d")}</th>
+              <th className="text-right font-medium py-3 px-2">{t("col.fandomValue")}</th>
+              <th className="text-right font-medium py-3 px-2">{t("col.volume24h")}</th>
+              <th className="text-right font-medium py-3 px-4">{t("col.trade")}</th>
             </tr>
           </thead>
           <tbody>
             {visible.length === 0 && (
               <tr>
                 <td colSpan={10} className="py-10 text-center text-gray-400">
-                  {showFavs || favoritesOnly
-                    ? "관심 목록이 비어 있어요. 별을 눌러 그룹을 추가해 보세요."
-                    : "표시할 그룹이 없습니다."}
+                  {showFavs || favoritesOnly ? t("table.emptyFavs") : t("table.empty")}
                 </td>
               </tr>
             )}
@@ -269,7 +265,7 @@ export default function MarketTable({
                     }}
                     className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors"
                   >
-                    거래하기
+                    {t("table.tradeBtn")}
                   </button>
                 </td>
               </tr>
@@ -283,7 +279,7 @@ export default function MarketTable({
           onClick={() => setExpanded((v) => !v)}
           className="w-full py-3 text-sm text-gray-500 hover:text-gray-700 border-t border-gray-100"
         >
-          {expanded ? "접기 ▲" : "더 보기 ▼"}
+          {expanded ? t("table.less") : t("table.more")}
         </button>
       )}
     </section>

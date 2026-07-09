@@ -15,6 +15,7 @@ import {
 } from "lightweight-charts";
 import { getMarketHistory } from "@/lib/data/markets";
 import { fmt, fmtCompact } from "@/lib/format";
+import { TKey, useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
 interface ApiCandle {
@@ -27,13 +28,13 @@ interface ApiCandle {
 }
 
 // ── 시간 간격 (정리된 6개) ─────────────────────────────
-const TIMEFRAMES = [
-  { label: "1분", minutes: 1 },
-  { label: "5분", minutes: 5 },
-  { label: "15분", minutes: 15 },
-  { label: "1시간", minutes: 60 },
-  { label: "1일", minutes: 1440 },
-  { label: "7일", minutes: 10080 },
+const TIMEFRAMES: { labelKey: TKey; minutes: number }[] = [
+  { labelKey: "tf.1m", minutes: 1 },
+  { labelKey: "tf.5m", minutes: 5 },
+  { labelKey: "tf.15m", minutes: 15 },
+  { labelKey: "tf.1h", minutes: 60 },
+  { labelKey: "tf.1d", minutes: 1440 },
+  { labelKey: "tf.7d", minutes: 10080 },
 ];
 
 const POLL_MS = 10_000;
@@ -57,8 +58,11 @@ export default function PriceChart({
   price: number;
 }) {
   const { state } = useStore();
+  const { t } = useLang();
   const [tf, setTf] = useState(3); // default 1시간
   const [demo, setDemo] = useState(false);
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -162,13 +166,14 @@ export default function PriceChart({
         return;
       }
       const up = c.close >= c.open;
+      const tt = tRef.current;
       tooltip.innerHTML = `
         <p style="font-weight:700;color:#374151;margin-bottom:4px">${tooltipTime(c.t, TIMEFRAMES[tfRef.current].minutes)}</p>
-        <p><span style="color:#9ca3af">시가</span> <b>${fmt(c.open)}</b></p>
-        <p><span style="color:#9ca3af">고가</span> <b style="color:#0ea06c">${fmt(c.high)}</b></p>
-        <p><span style="color:#9ca3af">저가</span> <b style="color:#e5484d">${fmt(c.low)}</b></p>
-        <p><span style="color:#9ca3af">종가</span> <b style="color:${up ? "#0ea06c" : "#e5484d"}">${fmt(c.close)}</b></p>
-        <p><span style="color:#9ca3af">거래량</span> <b>${fmtCompact(c.volume)} Fan$</b></p>`;
+        <p><span style="color:#9ca3af">${tt("chart.open")}</span> <b>${fmt(c.open)}</b></p>
+        <p><span style="color:#9ca3af">${tt("chart.high")}</span> <b style="color:#0ea06c">${fmt(c.high)}</b></p>
+        <p><span style="color:#9ca3af">${tt("chart.low")}</span> <b style="color:#e5484d">${fmt(c.low)}</b></p>
+        <p><span style="color:#9ca3af">${tt("chart.close")}</span> <b style="color:${up ? "#0ea06c" : "#e5484d"}">${fmt(c.close)}</b></p>
+        <p><span style="color:#9ca3af">${tt("chart.volume")}</span> <b>${fmtCompact(c.volume)} Fan$</b></p>`;
       tooltip.style.display = "block";
       const wrapW = wrap.clientWidth;
       const ttW = tooltip.offsetWidth || 130;
@@ -289,9 +294,9 @@ export default function PriceChart({
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       axisLabelVisible: true,
-      title: "현재가",
+      title: t("chart.currentLine"),
     });
-  }, [price, groupId, tf]);
+  }, [price, groupId, tf, t]);
 
   // ── 평균 매입가 라인 (보유 중일 때만) ─────────────────
   useEffect(() => {
@@ -308,19 +313,19 @@ export default function PriceChart({
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: `평균 매입가 ${fmt(avgBuyPrice)}`,
+        title: t("chart.avgLine", { n: fmt(avgBuyPrice) }),
       });
     }
-  }, [avgBuyPrice, groupId, tf]);
+  }, [avgBuyPrice, groupId, tf, t]);
 
   return (
     <div>
       {/* Interval tabs + indicators */}
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div className="flex items-center gap-1 flex-wrap">
-          {TIMEFRAMES.map((t, i) => (
+          {TIMEFRAMES.map((tfItem, i) => (
             <button
-              key={t.label}
+              key={tfItem.labelKey}
               onClick={() => setTf(i)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 tf === i
@@ -328,14 +333,14 @@ export default function PriceChart({
                   : "text-gray-500 hover:bg-gray-100 border border-gray-200"
               }`}
             >
-              {t.label}
+              {t(tfItem.labelKey)}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
           {demo && (
             <span className="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-semibold text-gray-400">
-              데모 차트 · 아직 거래 없음
+              {t("chart.demo")}
             </span>
           )}
           <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
@@ -343,7 +348,7 @@ export default function PriceChart({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500" />
             </span>
-            실시간
+            {t("chart.live")}
           </span>
         </div>
       </div>
@@ -359,7 +364,7 @@ export default function PriceChart({
       </div>
 
       <p className="text-[10px] text-gray-300 text-right mt-1">
-        실제 거래 기록 기반 · 10초마다 자동 갱신 · Charts powered by{" "}
+        {t("chart.note")}{" "}
         <a
           href="https://www.tradingview.com/"
           target="_blank"

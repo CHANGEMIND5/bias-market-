@@ -5,17 +5,18 @@ import ShareCard, { ShareCardData, shareCardText } from "./ShareCard";
 import { battleRanking } from "@/lib/battle";
 import { computeBadges, fanInfluence, influenceTitle } from "@/lib/badges";
 import { fmt, fmtInt, fmtPct } from "@/lib/format";
+import { TKey, useLang } from "@/lib/i18n";
 import { slugFor } from "@/lib/slug";
 import { useStore } from "@/lib/store";
 import { Group } from "@/lib/types";
 
 type CardType = "buy" | "rank" | "influence" | "weekly";
 
-const TABS: { type: CardType; label: string }[] = [
-  { type: "buy", label: "매수 완료" },
-  { type: "rank", label: "팬덤 순위" },
-  { type: "influence", label: "내 영향력" },
-  { type: "weekly", label: "주간 리그" },
+const TABS: { type: CardType; labelKey: TKey }[] = [
+  { type: "buy", labelKey: "share.tabBuy" },
+  { type: "rank", labelKey: "share.tabRank" },
+  { type: "influence", labelKey: "share.tabInfluence" },
+  { type: "weekly", labelKey: "share.tabWeekly" },
 ];
 
 export default function SharePreview({
@@ -28,6 +29,7 @@ export default function SharePreview({
   onClose: () => void;
 }) {
   const { state, portfolioValue, game, showToast, recordShareCopy } = useStore();
+  const { t } = useLang();
   const [type, setType] = useState<CardType>("buy");
 
   const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
@@ -53,51 +55,60 @@ export default function SharePreview({
     });
   }, [state, portfolioValue, game, ranking]);
 
-  // 카드 타입별 내용 — 문구 수정은 여기서
+  // 카드 타입별 내용 — 문구 수정은 lib/i18n.tsx의 share.* 키에서
   const card: ShareCardData = useMemo(() => {
+    const name = group.name;
     switch (type) {
       case "rank":
         return {
-          title: `${group.name} 현재 팬덤 배틀 #${rank}`,
+          title: t("share.rankTitle", { name, rank }),
           lines: [
-            `${group.name}가 ${pts.toFixed(1)} pts로 오늘의 팬덤 배틀 ${rank}위 ${rank === 1 ? "유지 중" : "도전 중"}`,
-            "Bias Market에서 팬덤 랭킹을 밀어올리는 중.",
+            t("share.rankLine", {
+              name, rank,
+              pts: pts.toFixed(1),
+              status: rank === 1 ? t("share.holding1st") : t("share.challenging"),
+            }),
+            t("share.pushing"),
           ],
         };
       case "influence":
         return {
-          title: `나는 ${group.name} ${influenceTitle(influence)}`,
+          title: t("share.inflTitle", { name, title: influenceTitle(influence) }),
           lines: [
-            `Fan Influence ${fmtInt(influence)} pts`,
-            "Bias Market에서 팬덤 영향력을 키우는 중.",
+            t("share.inflLine1", { pts: fmtInt(influence) }),
+            t("share.inflLine2"),
           ],
         };
       case "weekly":
         return {
-          title: "이번 주 팬덤 리그",
+          title: t("share.weeklyTitle"),
           lines: [
-            `${group.name} 현재 #${rank} · 참여자 ${fmtInt(entry?.holders ?? 0)}명`,
-            `배틀 점수 ${pts.toFixed(1)} pts · 24h ${fmtPct(change24h)}`,
+            t("share.weeklyLine1", { name, rank, n: fmtInt(entry?.holders ?? 0) }),
+            t("share.weeklyLine2", { pts: pts.toFixed(1), pct: fmtPct(change24h) }),
           ],
         };
       default:
         return {
-          title: `${group.name} Fan Shares 매수 완료`,
+          title: t("share.buyTitle", { name }),
           lines: [
-            `내 최애 ${group.name}가 24h ${fmtPct(change24h)} ${change24h >= 0 ? "상승" : "변동"} 중`,
-            "Bias Market에서 팬덤 랭킹을 밀어올리는 중.",
+            t("share.buyLine1", {
+              name,
+              pct: fmtPct(change24h),
+              dir: change24h >= 0 ? t("share.up") : t("share.moving"),
+            }),
+            t("share.pushing"),
           ],
         };
     }
-  }, [type, group.name, rank, pts, influence, change24h, entry?.holders]);
+  }, [type, group.name, rank, pts, influence, change24h, entry?.holders, t]);
 
   const copyText = async () => {
     try {
       await navigator.clipboard.writeText(shareCardText(card));
       recordShareCopy();
-      showToast("success", "공유 문구가 복사되었습니다.");
+      showToast("success", t("share.copiedText"));
     } catch {
-      showToast("error", "복사에 실패했습니다.");
+      showToast("error", t("share.copyFail"));
     }
   };
 
@@ -106,9 +117,9 @@ export default function SharePreview({
       const url = `${window.location.origin}/market/${slugFor(group)}`;
       await navigator.clipboard.writeText(url);
       recordShareCopy();
-      showToast("success", "링크가 복사되었습니다.");
+      showToast("success", t("share.copiedLink"));
     } catch {
-      showToast("error", "복사에 실패했습니다.");
+      showToast("error", t("share.copyFail"));
     }
   };
 
@@ -122,7 +133,7 @@ export default function SharePreview({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-bold">자랑하기 🎉</h3>
+          <h3 className="text-base font-bold">{t("share.title")}</h3>
           <button
             onClick={onClose}
             aria-label="닫기"
@@ -134,17 +145,17 @@ export default function SharePreview({
 
         {/* Card type tabs */}
         <div className="grid grid-cols-4 gap-1 rounded-xl border border-gray-200 p-1 mb-3">
-          {TABS.map((t) => (
+          {TABS.map((tab) => (
             <button
-              key={t.type}
-              onClick={() => setType(t.type)}
+              key={tab.type}
+              onClick={() => setType(tab.type)}
               className={`py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                type === t.type
+                type === tab.type
                   ? "bg-violet-600 text-white"
                   : "text-gray-500 hover:bg-gray-50"
               }`}
             >
-              {t.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -156,19 +167,19 @@ export default function SharePreview({
             onClick={copyText}
             className="py-2.5 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800"
           >
-            문구 복사
+            {t("share.copyText")}
           </button>
           <button
             onClick={copyLink}
             className="py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50"
           >
-            링크 복사
+            {t("share.copyLink")}
           </button>
           <button
             disabled
             className="py-2.5 rounded-xl border border-gray-100 bg-gray-50 text-xs font-semibold text-gray-300 cursor-not-allowed"
           >
-            이미지 저장 (준비 중)
+            {t("share.saveImage")}
           </button>
         </div>
         <p className="mt-2 text-[10px] text-gray-300 text-center">

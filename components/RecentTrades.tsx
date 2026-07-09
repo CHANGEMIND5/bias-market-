@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getTrades } from "@/lib/data/trades";
 import { fmt, fmtShares } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 
 interface Row {
   id: string;
@@ -29,6 +30,7 @@ export default function RecentTrades({
   groupId: string;
   price: number;
 }) {
+  const { t } = useLang();
   const [mineOnly, setMineOnly] = useState(false);
   const [rows, setRows] = useState<Row[] | null>(null);
 
@@ -62,7 +64,7 @@ export default function RecentTrades({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-bold">최근 거래</h3>
+        <h3 className="text-sm font-bold">{t("trades.title")}</h3>
         <div className="flex items-center gap-1 rounded-lg border border-gray-200 p-0.5">
           <button
             onClick={() => setMineOnly(false)}
@@ -70,7 +72,7 @@ export default function RecentTrades({
               !mineOnly ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
             }`}
           >
-            전체
+            {t("trades.all")}
           </button>
           <button
             onClick={() => setMineOnly(true)}
@@ -78,34 +80,32 @@ export default function RecentTrades({
               mineOnly ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
             }`}
           >
-            내 거래
+            {t("trades.mine")}
           </button>
         </div>
       </div>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-gray-400 border-b border-gray-100">
-            <th className="text-left font-medium py-2">시간</th>
-            <th className="text-left font-medium py-2">구분</th>
-            <th className="text-right font-medium py-2">가격 (Fan$)</th>
-            <th className="text-right font-medium py-2">수량 (Fan Shares)</th>
-            <th className="text-right font-medium py-2">합계 (Fan$)</th>
+            <th className="text-left font-medium py-2">{t("trades.time")}</th>
+            <th className="text-left font-medium py-2">{t("trades.side")}</th>
+            <th className="text-right font-medium py-2">{t("trades.price")}</th>
+            <th className="text-right font-medium py-2">{t("trades.shares")}</th>
+            <th className="text-right font-medium py-2">{t("trades.total")}</th>
           </tr>
         </thead>
         <tbody>
           {rows === null && (
             <tr>
               <td colSpan={5} className="py-6 text-center text-gray-300">
-                불러오는 중...
+                {t("trades.loading")}
               </td>
             </tr>
           )}
           {rows !== null && visible.length === 0 && (
             <tr>
               <td colSpan={5} className="py-6 text-center text-gray-400">
-                {mineOnly
-                  ? "이 종목의 내 거래가 아직 없어요."
-                  : "아직 거래가 없어요. 첫 거래의 주인공이 되어보세요!"}
+                {mineOnly ? t("trades.emptyMine") : t("trades.empty")}
               </td>
             </tr>
           )}
@@ -114,7 +114,9 @@ export default function RecentTrades({
               <td className="py-2 text-gray-500">
                 {timeLabel(r.time)}
                 {r.mine && (
-                  <span className="ml-1 text-[9px] text-violet-500 font-semibold">나</span>
+                  <span className="ml-1 text-[9px] text-violet-500 font-semibold">
+                    {t("trades.me")}
+                  </span>
                 )}
               </td>
               <td className="py-2">
@@ -124,7 +126,7 @@ export default function RecentTrades({
                   </span>
                 )}
                 <span className={`font-semibold ${r.side === "buy" ? "text-up" : "text-down"}`}>
-                  {r.side === "buy" ? "매수" : "매도"}
+                  {r.side === "buy" ? t("buy") : t("sell")}
                 </span>
               </td>
               <td className="py-2 text-right">{fmt(r.price)}</td>
@@ -134,9 +136,7 @@ export default function RecentTrades({
           ))}
         </tbody>
       </table>
-      <p className="mt-2 text-[10px] text-gray-300">
-        SYSTEM으로 표시된 거래는 팬덤 마켓의 기본 활성을 위한 가상 시스템 거래입니다.
-      </p>
+      <p className="mt-2 text-[10px] text-gray-300">{t("trades.systemNote")}</p>
     </div>
   );
 }
