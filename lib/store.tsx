@@ -18,6 +18,7 @@ import { updateShareStats } from "./data/shareStats";
 import { createTrade } from "./data/trades";
 import { todayString } from "./format";
 import { DEFAULT_GAME, GameData, loadGame, saveGame, withVisit } from "./game";
+import { useLang } from "./i18n";
 import { initialState } from "./storage";
 import { AppState, Holding, MarketState, Trade } from "./types";
 
@@ -90,6 +91,7 @@ let toastSeq = 0;
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
+  const { t } = useLang();
   const loggedIn = status === "authenticated";
 
   // Starts with the mock seed so the dashboard renders instantly,
@@ -176,38 +178,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const buy = useCallback(
     async (groupId: string, fanIn: number): Promise<TradeResult> => {
-      if (!loggedIn) return { ok: false, error: "Google 로그인 후 거래할 수 있어요." };
+      if (!loggedIn) return { ok: false, error: t("err.loginTrade") };
       try {
         const data = await createTrade({ groupId, side: "buy", amount: fanIn });
-        if (!data.ok) return { ok: false, error: data.error ?? "매수에 실패했습니다." };
+        if (!data.ok) return { ok: false, error: data.error ?? t("err.buyFail") };
         applyTradeResponse(groupId, data);
         return { ok: true, trade: data.trade as Trade };
       } catch {
-        return { ok: false, error: "서버에 연결할 수 없습니다." };
+        return { ok: false, error: t("err.network") };
       }
     },
-    [loggedIn, applyTradeResponse]
+    [loggedIn, applyTradeResponse, t]
   );
 
   const sell = useCallback(
     async (groupId: string, sharesIn: number): Promise<TradeResult> => {
-      if (!loggedIn) return { ok: false, error: "Google 로그인 후 거래할 수 있어요." };
+      if (!loggedIn) return { ok: false, error: t("err.loginTrade") };
       try {
         const data = await createTrade({ groupId, side: "sell", amount: sharesIn });
-        if (!data.ok) return { ok: false, error: data.error ?? "매도에 실패했습니다." };
+        if (!data.ok) return { ok: false, error: data.error ?? t("err.sellFail") };
         applyTradeResponse(groupId, data);
         return { ok: true, trade: data.trade as Trade };
       } catch {
-        return { ok: false, error: "서버에 연결할 수 없습니다." };
+        return { ok: false, error: t("err.network") };
       }
     },
-    [loggedIn, applyTradeResponse]
+    [loggedIn, applyTradeResponse, t]
   );
 
   const toggleFavorite = useCallback(
     async (groupId: string) => {
       if (!loggedIn) {
-        showToast("info", "관심 목록은 Google 로그인 후 저장돼요.");
+        showToast("info", t("err.favLogin"));
         return;
       }
       // optimistic update
@@ -224,16 +226,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // next refresh will reconcile
       }
     },
-    [loggedIn, showToast]
+    [loggedIn, showToast, t]
   );
 
   const canClaimReward = loggedIn && state.lastRewardDate !== todayString();
 
   const claimDailyReward = useCallback(async (): Promise<ClaimResult> => {
-    if (!loggedIn) return { ok: false, error: "Google 로그인 후 받을 수 있어요." };
+    if (!loggedIn) return { ok: false, error: t("err.loginReward") };
     try {
       const data = await sendJSON("/api/reward");
-      if (!data.ok) return { ok: false, error: data.error ?? "보상을 받을 수 없습니다." };
+      if (!data.ok) return { ok: false, error: data.error ?? t("err.rewardDone") };
       setState((s) => ({
         ...s,
         balance: data.balance,
@@ -242,38 +244,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
       return { ok: true };
     } catch {
-      return { ok: false, error: "서버에 연결할 수 없습니다." };
+      return { ok: false, error: t("err.network") };
     }
-  }, [loggedIn]);
+  }, [loggedIn, t]);
 
   const updateName = useCallback(
     async (name: string): Promise<ClaimResult> => {
-      if (!loggedIn) return { ok: false, error: "로그인이 필요해요." };
+      if (!loggedIn) return { ok: false, error: t("err.loginRequired") };
       try {
         const data = await sendJSON("/api/profile", { name }, "PATCH");
-        if (!data.ok) return { ok: false, error: data.error ?? "닉네임을 바꿀 수 없습니다." };
+        if (!data.ok) return { ok: false, error: data.error ?? t("err.network") };
         setUserName(data.name);
         return { ok: true };
       } catch {
-        return { ok: false, error: "서버에 연결할 수 없습니다." };
+        return { ok: false, error: t("err.network") };
       }
     },
-    [loggedIn]
+    [loggedIn, t]
   );
 
   const updateAvatar = useCallback(
     async (avatar: number): Promise<ClaimResult> => {
-      if (!loggedIn) return { ok: false, error: "로그인이 필요해요." };
+      if (!loggedIn) return { ok: false, error: t("err.loginRequired") };
       try {
         const data = await sendJSON("/api/profile", { avatar }, "PATCH");
-        if (!data.ok) return { ok: false, error: data.error ?? "아바타를 바꿀 수 없습니다." };
+        if (!data.ok) return { ok: false, error: data.error ?? t("err.network") };
         setUserImage(data.image ?? null);
         return { ok: true };
       } catch {
-        return { ok: false, error: "서버에 연결할 수 없습니다." };
+        return { ok: false, error: t("err.network") };
       }
     },
-    [loggedIn]
+    [loggedIn, t]
   );
 
   const priceOf = useCallback(

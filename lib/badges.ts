@@ -1,9 +1,10 @@
 import { fmtInt } from "./format";
 import { GameData } from "./game";
+import { Tfn } from "./i18n";
 import { AppState } from "./types";
 
 // ─────────────────────────────────────────────────────────────
-// 뱃지 정의 + 획득 규칙 — 규칙 수정은 이 파일에서
+// 뱃지 정의 + 획득 규칙 — 규칙 수정은 이 파일, 문구는 lib/i18n.tsx (b.*)
 // 뱃지는 가상 활동에 대한 인정일 뿐, 금전적 보상이 아닙니다.
 // ─────────────────────────────────────────────────────────────
 
@@ -19,15 +20,18 @@ export interface BadgeStatus {
   earnedDate?: string;
 }
 
-export function computeBadges(opts: {
-  state: AppState;
-  portfolioValue: number;
-  battleTopGroupId: string | null;
-  game: GameData;
-}): BadgeStatus[] {
+export function computeBadges(
+  opts: {
+    state: AppState;
+    portfolioValue: number;
+    battleTopGroupId: string | null;
+    game: GameData;
+  },
+  t: Tfn
+): BadgeStatus[] {
   const { state, portfolioValue, battleTopGroupId, game } = opts;
 
-  const buys = state.trades.filter((t) => t.side === "buy").length;
+  const buys = state.trades.filter((tr) => tr.side === "buy").length;
   const tradeCount = state.trades.length;
   const boosted = state.favorites.some(
     (f) => (state.holdings[f]?.shares ?? 0) > 0
@@ -39,46 +43,50 @@ export function computeBadges(opts: {
 
   const defs = [
     {
-      id: "early", icon: "⭐", name: "초기 서포터",
-      desc: "첫 Fan Shares 매수 완료",
+      id: "early", icon: "⭐",
+      name: t("b.early.name"), desc: t("b.early.desc"),
       unlocked: buys >= 1,
-      lockedProgress: `${Math.min(buys, 1)} / 1 매수`,
+      lockedProgress: t("b.early.prog", { n: Math.min(buys, 1) }),
     },
     {
-      id: "volume", icon: "📊", name: "거래량 기여자",
-      desc: "3회 이상 거래 완료",
+      id: "volume", icon: "📊",
+      name: t("b.volume.name"), desc: t("b.volume.desc"),
       unlocked: tradeCount >= 3,
-      lockedProgress: `${Math.min(tradeCount, 3)} / 3 거래`,
+      lockedProgress: t("b.volume.prog", { n: Math.min(tradeCount, 3) }),
     },
     {
-      id: "booster", icon: "🚀", name: "팬덤 부스터",
-      desc: "관심 팬덤의 Fan Shares 보유",
+      id: "booster", icon: "🚀",
+      name: t("b.booster.name"), desc: t("b.booster.desc"),
       unlocked: boosted,
-      lockedProgress: "관심 그룹 매수 시 획득",
+      lockedProgress: t("b.booster.prog"),
     },
     {
-      id: "top10", icon: "🏅", name: "상위 10% 홀더",
-      desc: `보유 가치 ${fmtInt(TOP_HOLDER_THRESHOLD)} Fan$ 이상 (데모 기준)`,
+      id: "top10", icon: "🏅",
+      name: t("b.top10.name"),
+      desc: t("b.top10.desc", { n: fmtInt(TOP_HOLDER_THRESHOLD) }),
       unlocked: topHolder,
-      lockedProgress: `${fmtInt(Math.min(portfolioValue, TOP_HOLDER_THRESHOLD))} / ${fmtInt(TOP_HOLDER_THRESHOLD)} Fan$`,
+      lockedProgress: t("b.top10.prog", {
+        a: fmtInt(Math.min(portfolioValue, TOP_HOLDER_THRESHOLD)),
+        b: fmtInt(TOP_HOLDER_THRESHOLD),
+      }),
     },
     {
-      id: "share", icon: "📣", name: "공유 마스터",
-      desc: "공유 문구 3회 이상 복사",
+      id: "share", icon: "📣",
+      name: t("b.share.name"), desc: t("b.share.desc"),
       unlocked: game.shareCopies >= 3,
-      lockedProgress: `${Math.min(game.shareCopies, 3)} / 3 공유`,
+      lockedProgress: t("b.share.prog", { n: Math.min(game.shareCopies, 3) }),
     },
     {
-      id: "streak", icon: "🔥", name: "7일 연속 팬",
-      desc: "7일 연속 방문",
+      id: "streak", icon: "🔥",
+      name: t("b.streak.name"), desc: t("b.streak.desc"),
       unlocked: game.streak >= 7,
-      lockedProgress: `${Math.min(game.streak, 7)} / 7 일`,
+      lockedProgress: t("b.streak.prog", { n: Math.min(game.streak, 7) }),
     },
     {
-      id: "champion", icon: "👑", name: "시즌 챔피언",
-      desc: "배틀 1위 팬덤의 서포터",
+      id: "champion", icon: "👑",
+      name: t("b.champion.name"), desc: t("b.champion.desc"),
       unlocked: champion,
-      lockedProgress: "1위 팬덤 보유 시 획득",
+      lockedProgress: t("b.champion.prog"),
     },
   ];
 
@@ -112,9 +120,9 @@ export function fanInfluence(opts: {
   );
 }
 
-export function influenceTitle(pts: number): string {
-  if (pts <= 500) return "신규 서포터";
-  if (pts <= 2000) return "상위 50% 서포터";
-  if (pts <= 5000) return "상위 25% 서포터";
-  return "상위 12% 서포터";
+export function influenceTitle(pts: number, t: Tfn): string {
+  if (pts <= 500) return t("title.newbie");
+  if (pts <= 2000) return t("title.top50");
+  if (pts <= 5000) return t("title.top25");
+  return t("title.top12");
 }

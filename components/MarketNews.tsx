@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Emblem from "./Emblem";
 import { getMarketNews, NewsItem } from "@/lib/data/news";
+import { useLang } from "@/lib/i18n";
 import { GROUP_MAP } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
@@ -12,19 +13,18 @@ export default function MarketNews({
   onSelect: (id: string) => void;
 }) {
   const { state } = useStore();
+  const { t } = useLang();
 
-  // 뉴스 생성 로직은 lib/data/news.ts 에서 수정
+  // 뉴스 생성 로직은 lib/data/news.ts, 문구는 lib/i18n.tsx (news.*)
   const news = useMemo<NewsItem[]>(
-    () => getMarketNews(state.markets),
-    [state.markets]
+    () => getMarketNews(state.markets, t),
+    [state.markets, t]
   );
 
   return (
     <section className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-      <h2 className="text-lg font-bold">팬덤 마켓 뉴스</h2>
-      <p className="text-sm text-gray-500 mt-0.5">
-        실시간 팬덤 마켓 소식을 빠르게 확인하세요.
-      </p>
+      <h2 className="text-lg font-bold">{t("news.title")}</h2>
+      <p className="text-sm text-gray-500 mt-0.5">{t("news.sub")}</p>
 
       <div className="mt-4 flex flex-col divide-y divide-gray-50">
         {news.map((n, i) => {
@@ -62,9 +62,7 @@ export default function MarketNews({
         })}
       </div>
 
-      <p className="mt-3 text-[10px] text-gray-300">
-        팬덤 마켓 뉴스는 앱 내부 가상 데이터 기반 알림입니다.
-      </p>
+      <p className="mt-3 text-[10px] text-gray-300">{t("news.notice")}</p>
     </section>
   );
 }

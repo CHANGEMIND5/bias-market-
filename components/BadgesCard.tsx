@@ -3,17 +3,19 @@
 import { useEffect, useMemo } from "react";
 import { battleRanking } from "@/lib/battle";
 import { computeBadges } from "@/lib/badges";
+import { useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
 export default function BadgesCard() {
   const { state, portfolioValue, game, markBadgeEarned } = useStore();
+  const { t } = useLang();
 
   const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
   const battleTopGroupId = ranking[0]?.groupId ?? null;
 
   const badges = useMemo(
-    () => computeBadges({ state, portfolioValue, battleTopGroupId, game }),
-    [state, portfolioValue, battleTopGroupId, game]
+    () => computeBadges({ state, portfolioValue, battleTopGroupId, game }, t),
+    [state, portfolioValue, battleTopGroupId, game, t]
   );
 
   // 새로 잠금 해제된 뱃지의 획득일 기록 (localStorage)
@@ -28,14 +30,12 @@ export default function BadgesCard() {
   return (
     <section className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-bold">내 뱃지</h2>
+        <h2 className="text-lg font-bold">{t("bdg.title")}</h2>
         <span className="text-xs text-gray-400">
           {unlockedCount} / {badges.length}
         </span>
       </div>
-      <p className="text-sm text-gray-500 mt-0.5">
-        팬덤 활동과 기여도에 따라 뱃지와 칭호를 획득해요!
-      </p>
+      <p className="text-sm text-gray-500 mt-0.5">{t("bdg.sub")}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5">
         {badges.map((b) => (
@@ -65,7 +65,7 @@ export default function BadgesCard() {
             </p>
             {b.unlocked ? (
               <p className="text-[10px] text-violet-500 font-semibold mt-1">
-                ✓ 획득{b.earnedDate ? ` · ${b.earnedDate}` : ""}
+                {t("bdg.earned")}{b.earnedDate ? ` · ${b.earnedDate}` : ""}
               </p>
             ) : (
               <p className="text-[10px] text-gray-400 mt-1">🔒 {b.progress}</p>
@@ -74,9 +74,7 @@ export default function BadgesCard() {
         ))}
       </div>
 
-      <p className="mt-3 text-[10px] text-gray-300">
-        뱃지는 가상 활동에 대한 인정 표시이며 금전적 보상이 아닙니다.
-      </p>
+      <p className="mt-3 text-[10px] text-gray-300">{t("bdg.notice")}</p>
     </section>
   );
 }

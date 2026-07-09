@@ -3,6 +3,7 @@
 import Emblem from "./Emblem";
 import { spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtInt, fmtPct, fmtShares } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 import { GROUP_MAP } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
@@ -12,6 +13,7 @@ export default function PortfolioCard({
   onSelect: (id: string) => void;
 }) {
   const { state, portfolioValue, totalCost, totalPnl, level } = useStore();
+  const { t } = useLang();
   const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   const influence = state.xp * 13 + Math.round(portfolioValue / 10);
 
@@ -32,15 +34,15 @@ export default function PortfolioCard({
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-          <p className="text-xs text-gray-500">보유 Fan$</p>
+          <p className="text-xs text-gray-500">{t("side.fanBalance")}</p>
           <p className="text-2xl font-extrabold mt-1">Fan$ {fmt(state.balance, 0)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-          <p className="text-xs text-gray-500">총 포트폴리오 가치</p>
+          <p className="text-xs text-gray-500">{t("pf.totalValue")}</p>
           <p className="text-2xl font-extrabold mt-1">Fan$ {fmt(portfolioValue, 0)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-          <p className="text-xs text-gray-500">총 손익</p>
+          <p className="text-xs text-gray-500">{t("pf.totalPnl")}</p>
           <p className={`text-2xl font-extrabold mt-1 ${changeColor(totalPnl)}`}>
             {totalPnl >= 0 ? "+" : ""}
             {fmt(totalPnl, 0)}
@@ -51,24 +53,24 @@ export default function PortfolioCard({
 
       {/* Holdings table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-card">
-        <h3 className="text-base font-bold p-5 pb-2">보유 Fan Shares</h3>
+        <h3 className="text-base font-bold p-5 pb-2">{t("pf.holdings")}</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
             <thead>
               <tr className="text-xs text-gray-400 border-b border-gray-100">
-                <th className="text-left font-medium py-3 px-5">그룹</th>
-                <th className="text-right font-medium py-3 px-2">보유 수량 (FS)</th>
-                <th className="text-right font-medium py-3 px-2">평균 매수가</th>
-                <th className="text-right font-medium py-3 px-2">현재 가격</th>
-                <th className="text-right font-medium py-3 px-2">평가 가치</th>
-                <th className="text-right font-medium py-3 px-5">손익률</th>
+                <th className="text-left font-medium py-3 px-5">{t("col.group")}</th>
+                <th className="text-right font-medium py-3 px-2">{t("pf.colShares")}</th>
+                <th className="text-right font-medium py-3 px-2">{t("pf.colAvg")}</th>
+                <th className="text-right font-medium py-3 px-2">{t("col.price")}</th>
+                <th className="text-right font-medium py-3 px-2">{t("pf.colValue")}</th>
+                <th className="text-right font-medium py-3 px-5">{t("pf.colPnl")}</th>
               </tr>
             </thead>
             <tbody>
               {holdings.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-10 text-center text-gray-400">
-                    아직 보유한 Fan Shares가 없어요. 전체 마켓에서 최애 그룹을 매수해 보세요!
+                    {t("pf.empty")}
                   </td>
                 </tr>
               )}
@@ -101,19 +103,19 @@ export default function PortfolioCard({
       {/* Ranking */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-          <p className="text-xs text-gray-500">내 포트폴리오 수익률</p>
+          <p className="text-xs text-gray-500">{t("pf.myReturn")}</p>
           <p className={`text-2xl font-extrabold mt-1 ${changeColor(pnlPct)}`}>
             {fmtPct(pnlPct)}
           </p>
           <p className="text-[11px] text-gray-400 mt-1">
-            전체 팬 트레이더 중 상위 {Math.max(1, Math.min(99, Math.round(50 - pnlPct)))}% (모의 랭킹)
+            {t("pf.returnSub", { n: Math.max(1, Math.min(99, Math.round(50 - pnlPct))) })}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-          <p className="text-xs text-gray-500">내 팬덤 영향력 점수</p>
-          <p className="text-2xl font-extrabold mt-1">{fmtInt(influence)} 점</p>
+          <p className="text-xs text-gray-500">{t("pf.influence")}</p>
+          <p className="text-2xl font-extrabold mt-1">{t("pf.pts", { n: fmtInt(influence) })}</p>
           <p className="text-[11px] text-gray-400 mt-1">
-            Lv.{level} · 거래 활동과 보유 자산으로 계산됩니다.
+            {t("pf.influenceSub", { n: level })}
           </p>
         </div>
       </div>

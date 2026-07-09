@@ -1,7 +1,9 @@
 // 팬덤 마켓 뉴스 생성 레이어 — 앱 내부 가상 데이터에서만 생성
+// 문구 수정은 lib/i18n.tsx의 news.* 키에서
 // TODO: Replace with server-generated news feed (Supabase) later.
 import { battleRanking } from "../battle";
 import { fmtInt, fmtPct, todayString } from "../format";
+import { Tfn } from "../i18n";
 import { GROUP_MAP } from "../mockData";
 import { hashString, mulberry32 } from "../rng";
 import { MarketState } from "../types";
@@ -14,22 +16,30 @@ export interface NewsItem {
   trend?: "up" | "down";
 }
 
-const TIMES = ["2분 전", "15분 전", "1시간 전", "2시간 전", "3시간 전", "5시간 전"];
-
 export function getMarketNews(
-  markets: Record<string, MarketState>
+  markets: Record<string, MarketState>,
+  t: Tfn
 ): NewsItem[] {
   const ranking = battleRanking(markets);
   if (ranking.length < 3) return [];
   const items: NewsItem[] = [];
+  const times = [
+    t("time.minAgo", { n: 2 }),
+    t("time.minAgo", { n: 15 }),
+    t("time.hourAgo", { n: 1 }),
+    t("time.hourAgo", { n: 2 }),
+    t("time.hourAgo", { n: 3 }),
+    t("time.hourAgo", { n: 5 }),
+  ];
+  const nameOf = (id: string) => GROUP_MAP[id]?.name ?? id;
 
   // 1) 24h 거래량 1위
   const topVol = [...ranking].sort((a, b) => b.volume - a.volume)[0];
   items.push({
     icon: "🔥",
-    message: `${GROUP_MAP[topVol.groupId]?.name}가 24h 거래량 1위를 기록했습니다.`,
+    message: t("news.topVol", { name: nameOf(topVol.groupId) }),
     groupId: topVol.groupId,
-    timeAgo: TIMES[0],
+    timeAgo: times[0],
     trend: "up",
   });
 
@@ -38,9 +48,12 @@ export function getMarketNews(
   if (topGain.ch24 > 0.01) {
     items.push({
       icon: "🚀",
-      message: `${GROUP_MAP[topGain.groupId]?.name}가 24시간 만에 ${fmtPct(topGain.ch24)} 상승했습니다.`,
+      message: t("news.topGain", {
+        name: nameOf(topGain.groupId),
+        pct: fmtPct(topGain.ch24),
+      }),
       groupId: topGain.groupId,
-      timeAgo: TIMES[1],
+      timeAgo: times[1],
       trend: "up",
     });
   }
@@ -49,9 +62,9 @@ export function getMarketNews(
   const second = ranking[1];
   items.push({
     icon: "👀",
-    message: `${GROUP_MAP[second.groupId]?.name}가 팬덤 배틀 2위로 올라섰습니다.`,
+    message: t("news.second", { name: nameOf(second.groupId) }),
     groupId: second.groupId,
-    timeAgo: TIMES[2],
+    timeAgo: times[2],
   });
 
   // 4) 홀더 수 마일스톤
@@ -60,9 +73,12 @@ export function getMarketNews(
     const milestone = Math.pow(10, Math.floor(Math.log10(topHolders.holders)));
     items.push({
       icon: "🎉",
-      message: `${GROUP_MAP[topHolders.groupId]?.name} 홀더 수가 ${fmtInt(milestone)}명을 돌파했습니다.`,
+      message: t("news.holders", {
+        name: nameOf(topHolders.groupId),
+        n: fmtInt(milestone),
+      }),
       groupId: topHolders.groupId,
-      timeAgo: TIMES[3],
+      timeAgo: times[3],
       trend: "up",
     });
   }
@@ -72,9 +88,12 @@ export function getMarketNews(
   const surge = ranking[Math.floor(rand() * Math.min(5, ranking.length))];
   items.push({
     icon: "📈",
-    message: `${GROUP_MAP[surge.groupId]?.name} 거래량이 전일 대비 ${Math.round(80 + rand() * 120)}% 증가했습니다.`,
+    message: t("news.surge", {
+      name: nameOf(surge.groupId),
+      n: Math.round(80 + rand() * 120),
+    }),
     groupId: surge.groupId,
-    timeAgo: TIMES[4],
+    timeAgo: times[4],
     trend: "up",
   });
 
@@ -83,9 +102,12 @@ export function getMarketNews(
   if (topLoss.ch24 < -0.01) {
     items.push({
       icon: "🧊",
-      message: `${GROUP_MAP[topLoss.groupId]?.name}가 24시간 동안 ${fmtPct(topLoss.ch24)} 조정 중입니다.`,
+      message: t("news.cooling", {
+        name: nameOf(topLoss.groupId),
+        pct: fmtPct(topLoss.ch24),
+      }),
       groupId: topLoss.groupId,
-      timeAgo: TIMES[5],
+      timeAgo: times[5],
       trend: "down",
     });
   }

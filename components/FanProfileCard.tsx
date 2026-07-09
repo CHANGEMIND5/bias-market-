@@ -6,11 +6,13 @@ import { spotPrice } from "@/lib/amm";
 import { battleRanking } from "@/lib/battle";
 import { computeBadges, fanInfluence, influenceTitle } from "@/lib/badges";
 import { fmtInt, fmtShares } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 import { GROUP_MAP } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
 export default function FanProfileCard() {
   const { state, portfolioValue, game } = useStore();
+  const { t } = useLang();
 
   const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
   const battleTopGroupId = ranking[0]?.groupId ?? null;
@@ -28,8 +30,8 @@ export default function FanProfileCard() {
   }, [state.holdings, state.markets]);
 
   const badges = useMemo(
-    () => computeBadges({ state, portfolioValue, battleTopGroupId, game }),
-    [state, portfolioValue, battleTopGroupId, game]
+    () => computeBadges({ state, portfolioValue, battleTopGroupId, game }, t),
+    [state, portfolioValue, battleTopGroupId, game, t]
   );
   const unlockedBadges = badges.filter((b) => b.unlocked);
 
@@ -49,18 +51,18 @@ export default function FanProfileCard() {
     battleParticipation,
     badgeCount: unlockedBadges.length,
   });
-  const title = influenceTitle(influence);
+  const title = influenceTitle(influence, t);
 
   const stats: [string, string][] = [
-    ["보유 Fan Shares", fmtShares(totalShares)],
-    ["거래 횟수", `${state.trades.length}회`],
-    ["참여한 배틀", `${battleParticipation}회`],
-    ["공유한 카드", `${game.shareCopies}회`],
+    [t("pf.holdings"), fmtShares(totalShares)],
+    [t("prof.trades"), t("prof.times", { n: state.trades.length })],
+    [t("prof.battles"), t("prof.times", { n: battleParticipation })],
+    [t("prof.shared"), t("prof.times", { n: game.shareCopies })],
   ];
 
   return (
     <section className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-      <h2 className="text-lg font-bold">내 팬덤 프로필</h2>
+      <h2 className="text-lg font-bold">{t("prof.title")}</h2>
 
       {/* 대표 팬덤 배너 */}
       {repFandom ? (
@@ -72,23 +74,21 @@ export default function FanProfileCard() {
         >
           <Emblem group={repFandom} size={40} />
           <div>
-            <p className="text-[11px] text-white/85 drop-shadow">대표 팬덤</p>
+            <p className="text-[11px] text-white/85 drop-shadow">{t("prof.rep")}</p>
             <p className="text-lg font-extrabold drop-shadow">{repFandom.name}</p>
           </div>
         </div>
       ) : (
         <div className="mt-3 rounded-2xl border border-dashed border-gray-200 p-4 text-center">
-          <p className="text-sm font-semibold text-gray-500">대표 팬덤: 아직 없음</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            첫 Fan Shares를 매수하면 대표 팬덤이 정해져요.
-          </p>
+          <p className="text-sm font-semibold text-gray-500">{t("prof.repNone")}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{t("prof.repNoneSub")}</p>
         </div>
       )}
 
       {/* 영향력 */}
       <div className="mt-4">
         <div className="flex items-baseline justify-between">
-          <p className="text-xs text-gray-500">팬덤 영향력</p>
+          <p className="text-xs text-gray-500">{t("prof.influence")}</p>
           <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[11px] font-bold">
             {title}
           </span>
@@ -115,13 +115,11 @@ export default function FanProfileCard() {
       {/* 보유 뱃지 미리보기 */}
       <div className="mt-4">
         <p className="text-xs text-gray-500 mb-1.5">
-          보유 뱃지 {unlockedBadges.length} / {badges.length}
+          {t("prof.badges", { a: unlockedBadges.length, b: badges.length })}
         </p>
         <div className="flex gap-1.5 flex-wrap">
           {unlockedBadges.length === 0 && (
-            <span className="text-[11px] text-gray-400">
-              아직 획득한 뱃지가 없어요.
-            </span>
+            <span className="text-[11px] text-gray-400">{t("prof.noBadges")}</span>
           )}
           {unlockedBadges.map((b) => (
             <span

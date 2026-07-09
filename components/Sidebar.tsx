@@ -6,7 +6,8 @@ import LangSwitcher from "./LangSwitcher";
 import UserAvatar from "./UserAvatar";
 import { AVATAR_PRESETS } from "@/lib/avatars";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
-import { TKey, useLang } from "@/lib/i18n";
+import { TKey, trServer, useLang } from "@/lib/i18n";
+import { DAILY_REWARD } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
 export type View =
@@ -49,10 +50,10 @@ export default function Sidebar({
   const pickAvatar = async (n: number) => {
     const r = await updateAvatar(n);
     if (r.ok) {
-      showToast("success", n === -1 ? "구글 사진으로 되돌렸어요." : "아바타가 변경됐어요!");
+      showToast("success", n === -1 ? t("ok.googlePhoto") : t("ok.avatar"));
       setAvatarPickerOpen(false);
     } else {
-      showToast("error", r.error ?? "아바타를 바꿀 수 없습니다.");
+      showToast("error", trServer(t, r.error, "err.network"));
     }
   };
 
@@ -65,10 +66,10 @@ export default function Sidebar({
     const r = await updateName(nameDraft.trim());
     setSavingName(false);
     if (r.ok) {
-      showToast("success", "닉네임이 변경됐어요!");
+      showToast("success", t("ok.nick"));
       setEditingName(false);
     } else {
-      showToast("error", r.error ?? "닉네임을 바꿀 수 없습니다.");
+      showToast("error", trServer(t, r.error, "err.network"));
     }
   };
 
@@ -248,8 +249,8 @@ export default function Sidebar({
         <button
           onClick={async () => {
             const r = await claimDailyReward();
-            if (r.ok) showToast("success", "일일 보상 2,000 Fan$ 지급 완료!");
-            else showToast("info", r.error ?? "보상을 받을 수 없습니다.");
+            if (r.ok) showToast("success", t("mis.claimed", { n: fmtInt(DAILY_REWARD) }));
+            else showToast("info", trServer(t, r.error, "err.rewardDone"));
           }}
           className={`mt-3 w-full py-2 rounded-xl text-sm font-semibold border transition-colors ${
             canClaimReward

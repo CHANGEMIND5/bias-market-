@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { quoteBuy, quoteSell, spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtShares } from "@/lib/format";
-import { useLang } from "@/lib/i18n";
+import { trServer, useLang } from "@/lib/i18n";
 import { MIN_BUY, MIN_SELL } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 import { Group } from "@/lib/types";
@@ -85,12 +85,12 @@ export default function TradePanel({
     const r = await buy(group.id, buyAmount);
     setPending(false);
     if (!r.ok) {
-      showToast("error", r.error ?? "매수에 실패했습니다.");
+      showToast("error", trServer(t, r.error, "err.buyFail"));
       return;
     }
     showToast(
       "success",
-      `${group.name} ${fmtShares(r.trade!.shares)} Fan Shares 매수 완료!`
+      t("ok.buyDone", { name: group.name, n: fmtShares(r.trade!.shares) })
     );
     onBuySuccess({ shares: r.trade!.shares, fan: r.trade!.fan });
     setBuyInput("1000");
@@ -102,12 +102,12 @@ export default function TradePanel({
     const r = await sell(group.id, sellAmount);
     setPending(false);
     if (!r.ok) {
-      showToast("error", r.error ?? "매도에 실패했습니다.");
+      showToast("error", trServer(t, r.error, "err.sellFail"));
       return;
     }
     showToast(
       "success",
-      `${group.name} 매도 완료 — Fan$ ${fmt(r.trade!.fan)} 수령!`
+      t("ok.sellDone", { name: group.name, n: fmt(r.trade!.fan) })
     );
     setSellInput("");
   };

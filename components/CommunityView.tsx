@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import UserAvatar from "./UserAvatar";
+import { trServer, useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
 interface Author {
@@ -51,6 +52,7 @@ function Avatar({ author }: { author: Author }) {
 
 export default function CommunityView() {
   const { loggedIn, isAdmin, showToast } = useStore();
+  const { t } = useLang();
   const [posts, setPosts] = useState<PostItem[] | null>(null);
   const [draft, setDraft] = useState("");
   const [asNotice, setAsNotice] = useState(false);
@@ -88,7 +90,7 @@ export default function CommunityView() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showToast("error", data.error ?? "글 작성에 실패했습니다.");
+        showToast("error", trServer(t, data.error, "err.network"));
         return;
       }
       setPosts((p) =>
@@ -102,9 +104,9 @@ export default function CommunityView() {
       );
       setDraft("");
       setAsNotice(false);
-      showToast("success", data.post.isNotice ? "공지가 게시됐어요!" : "글이 게시됐어요!");
+      showToast("success", data.post.isNotice ? t("comm.noticePosted") : t("comm.posted"));
     } catch {
-      showToast("error", "서버에 연결할 수 없습니다.");
+      showToast("error", t("err.network"));
     } finally {
       setPosting(false);
     }
@@ -112,7 +114,7 @@ export default function CommunityView() {
 
   const toggleLike = async (postId: string) => {
     if (!loggedIn) {
-      showToast("info", "좋아요는 Google 로그인 후 누를 수 있어요.");
+      showToast("info", t("comm.loginLike"));
       return;
     }
     // optimistic
@@ -146,10 +148,10 @@ export default function CommunityView() {
 
   const report = async (target: { postId?: string; commentId?: string }) => {
     if (!loggedIn) {
-      showToast("info", "신고는 Google 로그인 후 할 수 있어요.");
+      showToast("info", t("comm.loginReport"));
       return;
     }
-    if (!window.confirm("이 게시물을 신고할까요? 운영자가 확인합니다.")) return;
+    if (!window.confirm(t("comm.confirmReport"))) return;
     try {
       const res = await fetch("/api/report", {
         method: "POST",
@@ -157,20 +159,20 @@ export default function CommunityView() {
         body: JSON.stringify(target),
       });
       const data = await res.json();
-      if (data.ok) showToast("success", "신고가 접수되었습니다. 운영자가 확인할 예정이에요.");
-      else showToast("info", data.error ?? "신고에 실패했습니다.");
+      if (data.ok) showToast("success", t("comm.reported"));
+      else showToast("info", trServer(t, data.error, "err.network"));
     } catch {
-      showToast("error", "서버에 연결할 수 없습니다.");
+      showToast("error", t("err.network"));
     }
   };
 
   const deleteComment = async (postId: string, commentId: string) => {
-    if (!window.confirm("이 댓글을 삭제할까요?")) return;
+    if (!window.confirm(t("comm.confirmDelComment"))) return;
     try {
       const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showToast("error", data.error ?? "삭제에 실패했습니다.");
+        showToast("error", trServer(t, data.error, "err.network"));
         return;
       }
       setComments((c) => ({
@@ -184,25 +186,25 @@ export default function CommunityView() {
             : p
         )
       );
-      showToast("success", "댓글을 삭제했어요.");
+      showToast("success", t("comm.deletedComment"));
     } catch {
-      showToast("error", "서버에 연결할 수 없습니다.");
+      showToast("error", t("err.network"));
     }
   };
 
   const deletePost = async (postId: string) => {
-    if (!window.confirm("이 글을 삭제할까요?")) return;
+    if (!window.confirm(t("comm.confirmDelPost"))) return;
     try {
       const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showToast("error", data.error ?? "삭제에 실패했습니다.");
+        showToast("error", trServer(t, data.error, "err.network"));
         return;
       }
       setPosts((ps) => (ps ?? []).filter((p) => p.id !== postId));
-      showToast("success", "글을 삭제했어요.");
+      showToast("success", t("comm.deletedPost"));
     } catch {
-      showToast("error", "서버에 연결할 수 없습니다.");
+      showToast("error", t("err.network"));
     }
   };
 
@@ -242,7 +244,7 @@ export default function CommunityView() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showToast("error", data.error ?? "댓글 작성에 실패했습니다.");
+        showToast("error", trServer(t, data.error, "err.network"));
         return;
       }
       setComments((c) => ({
@@ -256,16 +258,14 @@ export default function CommunityView() {
       );
       setCommentDrafts((d) => ({ ...d, [postId]: "" }));
     } catch {
-      showToast("error", "서버에 연결할 수 없습니다.");
+      showToast("error", t("err.network"));
     }
   };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-      <h2 className="text-lg font-bold">커뮤니티</h2>
-      <p className="text-sm text-gray-500 mt-0.5">
-        팬덤 트레이더들의 이야기 — 최애 자랑, 전략 공유, 랭킹 배틀 선전포고까지.
-      </p>
+      <h2 className="text-lg font-bold">{t("nav.community")}</h2>
+      <p className="text-sm text-gray-500 mt-0.5">{t("comm.subtitle")}</p>
 
       {/* Composer */}
       {loggedIn ? (
@@ -273,7 +273,7 @@ export default function CommunityView() {
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, MAX_POST_LENGTH))}
-            placeholder="지금 내 최애 이야기를 들려주세요..."
+            placeholder={t("comm.placeholder")}
             rows={3}
             className="w-full text-sm outline-none resize-none bg-transparent"
           />
@@ -290,7 +290,7 @@ export default function CommunityView() {
                     onChange={(e) => setAsNotice(e.target.checked)}
                     className="accent-amber-500"
                   />
-                  📢 공지로 게시
+                  {t("comm.asNotice")}
                 </label>
               )}
             </div>
@@ -299,7 +299,7 @@ export default function CommunityView() {
               disabled={posting || draft.trim().length === 0}
               className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-bold transition-colors"
             >
-              {posting ? "게시 중..." : "게시하기"}
+              {posting ? t("comm.posting") : t("comm.post")}
             </button>
           </div>
         </div>
@@ -308,19 +308,17 @@ export default function CommunityView() {
           onClick={() => signIn("google")}
           className="mt-4 w-full py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
         >
-          Google로 로그인하고 글쓰기
+          {t("comm.loginWrite")}
         </button>
       )}
 
       {/* Feed */}
       <div className="mt-4 flex flex-col gap-3">
         {posts === null && (
-          <p className="py-8 text-center text-sm text-gray-300">불러오는 중...</p>
+          <p className="py-8 text-center text-sm text-gray-300">{t("trades.loading")}</p>
         )}
         {posts !== null && posts.length === 0 && (
-          <p className="py-8 text-center text-sm text-gray-400">
-            아직 글이 없어요. 첫 글의 주인공이 되어보세요!
-          </p>
+          <p className="py-8 text-center text-sm text-gray-400">{t("comm.empty")}</p>
         )}
         {(posts ?? []).map((p) => (
           <div
@@ -332,7 +330,7 @@ export default function CommunityView() {
             }`}
           >
             {p.isNotice && (
-              <p className="text-[11px] font-bold text-amber-600 mb-2">📢 공지</p>
+              <p className="text-[11px] font-bold text-amber-600 mb-2">{t("comm.notice")}</p>
             )}
             <div className="flex items-center gap-2.5">
               <Avatar author={p.author} />
@@ -341,11 +339,13 @@ export default function CommunityView() {
                   {p.author.name}
                   {p.author.isAdmin && (
                     <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-[10px] text-amber-700 font-bold">
-                      운영자
+                      {t("comm.admin")}
                     </span>
                   )}
                   {p.mine && (
-                    <span className="ml-1.5 text-[10px] text-violet-500 font-semibold">나</span>
+                    <span className="ml-1.5 text-[10px] text-violet-500 font-semibold">
+                      {t("trades.me")}
+                    </span>
                   )}
                 </p>
                 <p className="text-[11px] text-gray-400">{timeAgo(p.time)}</p>
@@ -353,7 +353,7 @@ export default function CommunityView() {
               <div className="flex items-center gap-2 shrink-0">
                 {isAdmin && (p.reportCount ?? 0) > 0 && (
                   <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-500 text-[10px] font-bold">
-                    🚩 신고 {p.reportCount}
+                    {t("comm.reportBadge", { n: p.reportCount ?? 0 })}
                   </span>
                 )}
                 {loggedIn && !p.mine && (
@@ -361,7 +361,7 @@ export default function CommunityView() {
                     onClick={() => report({ postId: p.id })}
                     className="text-[11px] text-gray-300 hover:text-amber-500"
                   >
-                    신고
+                    {t("comm.report")}
                   </button>
                 )}
                 {(p.mine || isAdmin) && (
@@ -369,7 +369,7 @@ export default function CommunityView() {
                     onClick={() => deletePost(p.id)}
                     className="text-[11px] text-gray-300 hover:text-red-400"
                   >
-                    삭제
+                    {t("comm.delete")}
                   </button>
                 )}
               </div>
@@ -419,7 +419,7 @@ export default function CommunityView() {
                               onClick={() => report({ commentId: c.id })}
                               className="text-[10px] text-gray-300 hover:text-amber-500"
                             >
-                              신고
+                              {t("comm.report")}
                             </button>
                           )}
                           {(c.mine || isAdmin) && (
@@ -427,7 +427,7 @@ export default function CommunityView() {
                               onClick={() => deleteComment(p.id, c.id)}
                               className="text-[10px] text-gray-300 hover:text-red-400"
                             >
-                              삭제
+                              {t("comm.delete")}
                             </button>
                           )}
                         </span>
@@ -440,7 +440,7 @@ export default function CommunityView() {
                 ))}
                 {comments[p.id] && comments[p.id].length === 0 && (
                   <p className="text-xs text-gray-400 text-center py-1">
-                    첫 댓글을 남겨보세요!
+                    {t("comm.firstComment")}
                   </p>
                 )}
                 {loggedIn ? (
@@ -458,14 +458,14 @@ export default function CommunityView() {
                           submitComment(p.id);
                         }
                       }}
-                      placeholder="댓글 달기..."
+                      placeholder={t("comm.commentPlaceholder")}
                       className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:border-emerald-400"
                     />
                     <button
                       onClick={() => submitComment(p.id)}
                       className="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800"
                     >
-                      등록
+                      {t("comm.send")}
                     </button>
                   </div>
                 ) : (
@@ -473,7 +473,7 @@ export default function CommunityView() {
                     onClick={() => signIn("google")}
                     className="text-xs text-gray-400 hover:text-gray-600 text-left"
                   >
-                    댓글은 Google 로그인 후 쓸 수 있어요 →
+                    {t("comm.loginComment")}
                   </button>
                 )}
               </div>

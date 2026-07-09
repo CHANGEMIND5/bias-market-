@@ -39,12 +39,15 @@ export default function SharePreview({
 
   // 팬덤 영향력 (프로필 카드와 동일 공식)
   const influence = useMemo(() => {
-    const badges = computeBadges({
-      state,
-      portfolioValue,
-      battleTopGroupId: ranking[0]?.groupId ?? null,
-      game,
-    });
+    const badges = computeBadges(
+      {
+        state,
+        portfolioValue,
+        battleTopGroupId: ranking[0]?.groupId ?? null,
+        game,
+      },
+      t
+    );
     return fanInfluence({
       portfolioValue,
       tradeCount: state.trades.length,
@@ -53,7 +56,7 @@ export default function SharePreview({
         .size,
       badgeCount: badges.filter((b) => b.unlocked).length,
     });
-  }, [state, portfolioValue, game, ranking]);
+  }, [state, portfolioValue, game, ranking, t]);
 
   // 카드 타입별 내용 — 문구 수정은 lib/i18n.tsx의 share.* 키에서
   const card: ShareCardData = useMemo(() => {
@@ -73,7 +76,7 @@ export default function SharePreview({
         };
       case "influence":
         return {
-          title: t("share.inflTitle", { name, title: influenceTitle(influence) }),
+          title: t("share.inflTitle", { name, title: influenceTitle(influence, t) }),
           lines: [
             t("share.inflLine1", { pts: fmtInt(influence) }),
             t("share.inflLine2"),
