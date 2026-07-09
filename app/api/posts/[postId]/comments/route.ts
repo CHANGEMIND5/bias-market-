@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -12,11 +13,18 @@ export async function GET(
   _req: Request,
   { params }: { params: { postId: string } }
 ) {
+  const session = await getServerSession(authOptions);
+  const uid = session?.user?.id ?? null;
+  const viewerIsAdmin = isAdminEmail(session?.user?.email);
+
   const comments = await prisma.comment.findMany({
     where: { postId: params.postId },
     orderBy: { createdAt: "asc" },
     take: 50,
-    include: { user: { select: { name: true, image: true } } },
+    include: {
+      user: { select: { name: true, image: true } },
+      _count: { select: { reports: true } },
+    },
   });
 
   return NextResponse.json({
@@ -25,6 +33,8 @@ export async function GET(
       body: c.body,
       time: c.createdAt.toISOString(),
       author: { name: c.user?.name ?? "익명 팬", image: c.user?.image ?? null },
+      mine: uid !== null && c.userId === uid,
+      reportCount: viewerIsAdmin ? c._count.reports : undefined,
     })),
   });
 }

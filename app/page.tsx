@@ -70,6 +70,11 @@ export default function Page() {
           <footer className="text-[11px] leading-relaxed text-gray-400 px-2 pb-6">
             <p>{DISCLAIMER_KO}</p>
             <p className="mt-1.5">{DISCLAIMER_EN}</p>
+            <p className="mt-2">
+              <a href="/privacy" className="underline hover:text-gray-600">
+                개인정보처리방침
+              </a>
+            </p>
           </footer>
         </main>
       </div>

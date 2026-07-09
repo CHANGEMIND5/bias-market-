@@ -21,6 +21,7 @@ interface PostItem {
   commentCount: number;
   likedByMe: boolean;
   mine: boolean;
+  reportCount?: number; // 운영자에게만 내려옴
 }
 
 interface CommentItem {
@@ -28,6 +29,8 @@ interface CommentItem {
   body: string;
   time: string;
   author: Author;
+  mine?: boolean;
+  reportCount?: number; // 운영자에게만 내려옴
 }
 
 const POLL_MS = 30_000;
@@ -138,6 +141,52 @@ export default function CommunityView() {
       }
     } catch {
       // next poll reconciles
+    }
+  };
+
+  const report = async (target: { postId?: string; commentId?: string }) => {
+    if (!loggedIn) {
+      showToast("info", "신고는 Google 로그인 후 할 수 있어요.");
+      return;
+    }
+    if (!window.confirm("이 게시물을 신고할까요? 운영자가 확인합니다.")) return;
+    try {
+      const res = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(target),
+      });
+      const data = await res.json();
+      if (data.ok) showToast("success", "신고가 접수되었습니다. 운영자가 확인할 예정이에요.");
+      else showToast("info", data.error ?? "신고에 실패했습니다.");
+    } catch {
+      showToast("error", "서버에 연결할 수 없습니다.");
+    }
+  };
+
+  const deleteComment = async (postId: string, commentId: string) => {
+    if (!window.confirm("이 댓글을 삭제할까요?")) return;
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) {
+        showToast("error", data.error ?? "삭제에 실패했습니다.");
+        return;
+      }
+      setComments((c) => ({
+        ...c,
+        [postId]: (c[postId] ?? []).filter((x) => x.id !== commentId),
+      }));
+      setPosts((ps) =>
+        (ps ?? []).map((p) =>
+          p.id === postId
+            ? { ...p, commentCount: Math.max(0, p.commentCount - 1) }
+            : p
+        )
+      );
+      showToast("success", "댓글을 삭제했어요.");
+    } catch {
+      showToast("error", "서버에 연결할 수 없습니다.");
     }
   };
 
@@ -301,14 +350,29 @@ export default function CommunityView() {
                 </p>
                 <p className="text-[11px] text-gray-400">{timeAgo(p.time)}</p>
               </div>
-              {(p.mine || isAdmin) && (
-                <button
-                  onClick={() => deletePost(p.id)}
-                  className="text-[11px] text-gray-300 hover:text-red-400 shrink-0"
-                >
-                  삭제
-                </button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {isAdmin && (p.reportCount ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-500 text-[10px] font-bold">
+                    🚩 신고 {p.reportCount}
+                  </span>
+                )}
+                {loggedIn && !p.mine && (
+                  <button
+                    onClick={() => report({ postId: p.id })}
+                    className="text-[11px] text-gray-300 hover:text-amber-500"
+                  >
+                    신고
+                  </button>
+                )}
+                {(p.mine || isAdmin) && (
+                  <button
+                    onClick={() => deletePost(p.id)}
+                    className="text-[11px] text-gray-300 hover:text-red-400"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             </div>
             <p className="text-sm mt-3 leading-relaxed whitespace-pre-wrap break-words">
               {p.body}
@@ -337,12 +401,37 @@ export default function CommunityView() {
                   <div key={c.id} className="flex items-start gap-2">
                     <Avatar author={c.author} />
                     <div className="min-w-0 flex-1 rounded-lg bg-gray-50 px-3 py-2">
-                      <p className="text-xs">
-                        <span className="font-semibold">{c.author.name}</span>
-                        <span className="text-gray-400 ml-1.5 text-[10px]">
-                          {timeAgo(c.time)}
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs min-w-0">
+                          <span className="font-semibold">{c.author.name}</span>
+                          <span className="text-gray-400 ml-1.5 text-[10px]">
+                            {timeAgo(c.time)}
+                          </span>
+                          {isAdmin && (c.reportCount ?? 0) > 0 && (
+                            <span className="ml-1.5 px-1 py-0.5 rounded bg-red-50 text-red-500 text-[9px] font-bold">
+                              🚩 {c.reportCount}
+                            </span>
+                          )}
+                        </p>
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          {loggedIn && !c.mine && (
+                            <button
+                              onClick={() => report({ commentId: c.id })}
+                              className="text-[10px] text-gray-300 hover:text-amber-500"
+                            >
+                              신고
+                            </button>
+                          )}
+                          {(c.mine || isAdmin) && (
+                            <button
+                              onClick={() => deleteComment(p.id, c.id)}
+                              className="text-[10px] text-gray-300 hover:text-red-400"
+                            >
+                              삭제
+                            </button>
+                          )}
                         </span>
-                      </p>
+                      </div>
                       <p className="text-xs mt-0.5 leading-relaxed whitespace-pre-wrap break-words">
                         {c.body}
                       </p>

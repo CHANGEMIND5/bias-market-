@@ -22,6 +22,22 @@ model User {
   posts          Post[]
   postLikes      PostLike[]
   comments       Comment[]
+  reports        Report[]
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  postId     String?
+  commentId  String?
+  reason     String?
+  createdAt  DateTime @default(now())
+  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, postId])
+  @@unique([reporterId, commentId])
 }
 
 model Post {
@@ -33,6 +49,7 @@ model Post {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes     PostLike[]
   comments  Comment[]
+  reports   Report[]
 
   @@index([createdAt])
 }
@@ -54,6 +71,7 @@ model Comment {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reports   Report[]
 
   @@index([postId, createdAt])
 }

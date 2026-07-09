@@ -12,13 +12,14 @@ const MAX_POST_LENGTH = 500;
 export async function GET() {
   const session = await getServerSession(authOptions);
   const uid = session?.user?.id ?? null;
+  const viewerIsAdmin = isAdminEmail(session?.user?.email);
 
   const posts = await prisma.post.findMany({
     orderBy: [{ isNotice: "desc" }, { createdAt: "desc" }],
     take: 30,
     include: {
       user: { select: { name: true, image: true, email: true } },
-      _count: { select: { likes: true, comments: true } },
+      _count: { select: { likes: true, comments: true, reports: true } },
       likes: uid
         ? { where: { userId: uid }, select: { userId: true } }
         : { where: { userId: "-" }, select: { userId: true } },
@@ -40,6 +41,8 @@ export async function GET() {
       commentCount: p._count.comments,
       likedByMe: p.likes.length > 0,
       mine: uid !== null && p.userId === uid,
+      // 신고 수는 운영자에게만 노출
+      reportCount: viewerIsAdmin ? p._count.reports : undefined,
     })),
   });
 }
