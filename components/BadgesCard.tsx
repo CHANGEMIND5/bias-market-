@@ -7,15 +7,15 @@ import { useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
 export default function BadgesCard() {
-  const { state, portfolioValue, game, markBadgeEarned } = useStore();
+  const { state, portfolioValue, game, markBadgeEarned, refCount } = useStore();
   const { t } = useLang();
 
   const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
   const battleTopGroupId = ranking[0]?.groupId ?? null;
 
   const badges = useMemo(
-    () => computeBadges({ state, portfolioValue, battleTopGroupId, game }, t),
-    [state, portfolioValue, battleTopGroupId, game, t]
+    () => computeBadges({ state, portfolioValue, battleTopGroupId, game, refCount }, t),
+    [state, portfolioValue, battleTopGroupId, game, refCount, t]
   );
 
   // 새로 잠금 해제된 뱃지의 획득일 기록 (localStorage)

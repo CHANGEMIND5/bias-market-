@@ -7,12 +7,30 @@ import { battleRanking } from "@/lib/battle";
 import { computeBadges, fanInfluence, influenceTitle } from "@/lib/badges";
 import { fmtInt, fmtShares } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
-import { GROUP_MAP } from "@/lib/mockData";
+import {
+  GROUP_MAP,
+  REF_INVITEE_BONUS,
+  REF_INVITER_BONUS,
+  REF_MAX_REWARDS,
+} from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
 export default function FanProfileCard() {
-  const { state, portfolioValue, game } = useStore();
+  const { state, portfolioValue, game, refCode, refCount, loggedIn, showToast } =
+    useStore();
   const { t } = useLang();
+
+  const copyInvite = async () => {
+    if (!refCode) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/?ref=${refCode}`
+      );
+      showToast("success", t("ref.copied"));
+    } catch {
+      showToast("error", t("share.copyFail"));
+    }
+  };
 
   const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
   const battleTopGroupId = ranking[0]?.groupId ?? null;
@@ -30,8 +48,8 @@ export default function FanProfileCard() {
   }, [state.holdings, state.markets]);
 
   const badges = useMemo(
-    () => computeBadges({ state, portfolioValue, battleTopGroupId, game }, t),
-    [state, portfolioValue, battleTopGroupId, game, t]
+    () => computeBadges({ state, portfolioValue, battleTopGroupId, game, refCount }, t),
+    [state, portfolioValue, battleTopGroupId, game, refCount, t]
   );
   const unlockedBadges = badges.filter((b) => b.unlocked);
 
@@ -132,6 +150,36 @@ export default function FanProfileCard() {
           ))}
         </div>
       </div>
+
+      {/* 친구 초대 */}
+      {loggedIn && refCode && (
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <div className="flex items-baseline justify-between">
+            <p className="text-xs font-bold text-gray-600">🤝 {t("ref.title")}</p>
+            <span className="text-[11px] font-semibold text-violet-600">
+              {t("ref.count", { n: refCount })}
+            </span>
+          </div>
+          <p className="mt-1 text-[10px] text-gray-400 leading-relaxed">
+            {t("ref.desc", {
+              a: REF_INVITER_BONUS.toLocaleString(),
+              b: REF_INVITEE_BONUS.toLocaleString(),
+              c: REF_MAX_REWARDS,
+            })}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="flex-1 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-xs font-bold tracking-widest text-center">
+              {refCode}
+            </code>
+            <button
+              onClick={copyInvite}
+              className="shrink-0 px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-colors"
+            >
+              {t("ref.copy")}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

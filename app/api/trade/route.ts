@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureMarkets } from "@/lib/markets";
 import { GROUP_MAP, MIN_BUY, MIN_SELL } from "@/lib/mockData";
+import { processFirstTradeReferral } from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -77,13 +78,22 @@ export async function POST(req: Request) {
         }),
       ]);
 
+    // 첫 거래 초대 보상 (조건 미충족 시 0)
+    let refBonus = 0;
+    try {
+      refBonus = await processFirstTradeReferral(userId);
+    } catch {
+      // 보상 실패가 거래를 막으면 안 됨
+    }
+
     return NextResponse.json({
       ok: true,
-      balance: updatedUser.balance,
+      balance: updatedUser.balance + refBonus,
       xp: updatedUser.xp,
       market: updatedMarket,
       holding: { shares: updatedHolding.shares, cost: updatedHolding.cost },
       trade: { ...serializeTrade(trade) },
+      refBonus,
     });
   }
 
@@ -131,15 +141,24 @@ export async function POST(req: Request) {
     }),
   ]);
 
+  // 첫 거래 초대 보상 (조건 미충족 시 0)
+  let refBonus = 0;
+  try {
+    refBonus = await processFirstTradeReferral(userId);
+  } catch {
+    // 보상 실패가 거래를 막으면 안 됨
+  }
+
   return NextResponse.json({
     ok: true,
-    balance: updatedUser.balance,
+    balance: updatedUser.balance + refBonus,
     xp: updatedUser.xp,
     market: updatedMarket,
     holding: soldAll
       ? null
       : { shares: remaining, cost: (holding?.cost ?? 0) - costRemoved },
     trade: { ...serializeTrade(trade) },
+    refBonus,
   });
 }
 

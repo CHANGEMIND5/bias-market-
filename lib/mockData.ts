@@ -9,6 +9,11 @@ export const FEE_RATE = 0.003; // 0.3% swap fee
 export const MIN_BUY = 10; // minimum buy in Fan$
 export const MIN_SELL = 1; // minimum sell in Fan Shares
 export const INITIAL_POOL = 1_000_000; // 1,000,000 Fan$ + 1,000,000 Fan Shares at price 1
+
+// 친구 초대 보상 — 초대받은 유저가 "첫 거래"를 완료해야 지급 (어뷰징 방지)
+export const REF_INVITER_BONUS = 2_000; // 초대자 보상 (Fan$)
+export const REF_INVITEE_BONUS = 1_000; // 초대받은 유저 보상 (Fan$)
+export const REF_MAX_REWARDS = 10; // 초대자 Fan$ 보상 상한 (이후엔 카운트만 증가)
 export const TOTAL_SHARES = 1_000_000; // total Fan Shares per asset (for 팬덤 가치)
 
 // FAIR START: 모든 종목이 1 Fan$, 거래량 0, 보유자 0에서 똑같이 출발합니다.

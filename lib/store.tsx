@@ -16,7 +16,7 @@ import { updateFavorite } from "./data/favorites";
 import { fetchAppState } from "./data/markets";
 import { updateShareStats } from "./data/shareStats";
 import { createTrade } from "./data/trades";
-import { todayString } from "./format";
+import { fmtInt, todayString } from "./format";
 import { DEFAULT_GAME, GameData, loadGame, saveGame, withVisit } from "./game";
 import { Tfn, TKey, useLang } from "./i18n";
 import { initialState } from "./storage";
@@ -51,6 +51,8 @@ interface StoreValue {
   game: GameData;
   recordShareCopy: () => void;
   markBadgeEarned: (id: string) => void;
+  refCode: string | null;
+  refCount: number;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -101,6 +103,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [refCode, setRefCode] = useState<string | null>(null);
+  const [refCount, setRefCount] = useState(0);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [game, setGame] = useState<GameData>(DEFAULT_GAME);
 
@@ -108,6 +112,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setGame(saveGame(withVisit(loadGame())));
   }, []);
+
+  // URL의 ?ref= 초대 코드 캡처 (로그인 전에 방문해도 기억)
+  useEffect(() => {
+    try {
+      const code = new URLSearchParams(window.location.search).get("ref");
+      if (code) window.localStorage.setItem("bias-market-ref", code);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // 로그인 후 저장해둔 초대 코드 적용 (서버가 신규 유저인지 검증)
+  useEffect(() => {
+    if (!loggedIn || !hydrated) return;
+    let code: string | null = null;
+    try {
+      code = window.localStorage.getItem("bias-market-ref");
+      if (code) window.localStorage.removeItem("bias-market-ref");
+    } catch {
+      // ignore
+    }
+    if (!code) return;
+    sendJSON("/api/referral", { code })
+      .then((d) => {
+        if (d?.ok) showToast("success", t("ref.applied"));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn, hydrated]);
 
   const recordShareCopy = useCallback(() => {
     setGame((g) => updateShareStats(g));
@@ -139,6 +172,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(data.user?.isAdmin === true);
       setUserName(data.user?.name ?? null);
       setUserImage(data.user?.image ?? null);
+      setRefCode(data.user?.refCode ?? null);
+      setRefCount(data.user?.refCount ?? 0);
       setHydrated(true);
     } catch {
       // server unreachable — keep showing current data
@@ -172,8 +207,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           trades: [data.trade as Trade, ...s.trades].slice(0, 200),
         };
       });
+      // 첫 거래 초대 보상 알림
+      if (typeof data.refBonus === "number" && data.refBonus > 0) {
+        showToast("success", t("ok.refBonus", { n: fmtInt(data.refBonus) }));
+      }
     },
-    []
+    [showToast, t]
   );
 
   const buy = useCallback(
@@ -305,7 +344,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const value: StoreValue = {
     state, hydrated, loggedIn, isAdmin, userName, userImage, updateName, updateAvatar,
-    game, recordShareCopy, markBadgeEarned,
+    game, recordShareCopy, markBadgeEarned, refCode, refCount,
     toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,

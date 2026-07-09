@@ -26,10 +26,12 @@ export function computeBadges(
     portfolioValue: number;
     battleTopGroupId: string | null;
     game: GameData;
+    refCount?: number; // 성공한 친구 초대 수
   },
   t: Tfn
 ): BadgeStatus[] {
   const { state, portfolioValue, battleTopGroupId, game } = opts;
+  const refCount = opts.refCount ?? 0;
 
   const buys = state.trades.filter((tr) => tr.side === "buy").length;
   const tradeCount = state.trades.length;
@@ -87,6 +89,12 @@ export function computeBadges(
       name: t("b.champion.name"), desc: t("b.champion.desc"),
       unlocked: champion,
       lockedProgress: t("b.champion.prog"),
+    },
+    {
+      id: "recruiter", icon: "🤝",
+      name: t("b.recruiter.name"), desc: t("b.recruiter.desc"),
+      unlocked: refCount >= 3,
+      lockedProgress: t("b.recruiter.prog", { n: Math.min(refCount, 3) }),
     },
   ];
 

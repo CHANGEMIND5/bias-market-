@@ -59,6 +59,22 @@ export async function GET() {
     });
   }
 
+  // 초대 코드가 없으면 생성 (6자리, 충돌 시 재시도)
+  if (!user.refCode) {
+    for (let i = 0; i < 5; i++) {
+      const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+      try {
+        user = await prisma.user.update({
+          where: { id: userId },
+          data: { refCode: code },
+        });
+        break;
+      } catch {
+        // 코드 충돌 — 재시도
+      }
+    }
+  }
+
   const [holdings, favorites, trades] = await Promise.all([
     prisma.holding.findMany({ where: { userId } }),
     prisma.favorite.findMany({ where: { userId } }),
@@ -78,6 +94,8 @@ export async function GET() {
       name: user.name,
       image: user.image,
       isAdmin: isAdminEmail(session?.user?.email),
+      refCode: user.refCode,
+      refCount: user.refCount,
     },
     holdings: Object.fromEntries(
       holdings.map((h) => [h.groupId, { shares: h.shares, cost: h.cost }])
