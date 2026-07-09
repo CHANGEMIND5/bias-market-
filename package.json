@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "prisma db push",
+    "predev": "prisma db push --accept-data-loss",
     "dev": "next dev",
-    "build": "prisma db push && next build",
+    "build": "prisma db push --accept-data-loss && next build",
     "start": "next start",
-    "db:push": "prisma db push",
+    "db:push": "prisma db push --accept-data-loss",
     "postinstall": "prisma generate"
   },
   "dependencies": {
