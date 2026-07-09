@@ -7,7 +7,7 @@ import UserAvatar from "./UserAvatar";
 import { AVATAR_PRESETS } from "@/lib/avatars";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
 import { TKey, trServer, useLang } from "@/lib/i18n";
-import { DAILY_REWARD } from "@/lib/mockData";
+import { DAILY_REWARD, STARTING_BALANCE } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
 export type View =
@@ -37,7 +37,7 @@ export default function Sidebar({
   const {
     state, portfolioValue, totalCost, totalPnl, holdingCount,
     level, levelTitle, xpInLevel, xpPerLevel,
-    claimDailyReward, canClaimReward, showToast,
+    claimDailyReward, canClaimReward, showToast, loggedIn,
     userName, userImage, updateName, updateAvatar,
   } = useStore();
   const { data: session } = useSession();
@@ -251,20 +251,40 @@ export default function Sidebar({
             <span className="font-medium">{t("side.items", { n: holdingCount })}</span>
           </div>
         </div>
-        <button
-          onClick={async () => {
-            const r = await claimDailyReward();
-            if (r.ok) showToast("success", t("mis.claimed", { n: fmtInt(DAILY_REWARD) }));
-            else showToast("info", trServer(t, r.error, "err.rewardDone"));
-          }}
-          className={`mt-3 w-full py-2 rounded-xl text-sm font-semibold border transition-colors ${
-            canClaimReward
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              : "border-gray-200 bg-gray-50 text-gray-400"
-          }`}
-        >
-          {canClaimReward ? t("side.claim") : t("side.claimed")}
-        </button>
+        {/* 보상 영역 — 가입 보너스(1회)와 일일 보상(매일)을 구분해 표시 */}
+        {!loggedIn ? (
+          <button
+            onClick={() => signIn("google")}
+            className="mt-3 w-full py-2 rounded-xl text-sm font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+          >
+            {t("side.loginBonus", { n: fmtInt(STARTING_BALANCE) })}
+          </button>
+        ) : (
+          <>
+            {state.lastRewardDate === null && (
+              <p className="mt-3 text-[11px] font-semibold text-emerald-600 text-center">
+                {t("side.signupBonus", { n: fmtInt(STARTING_BALANCE) })}
+              </p>
+            )}
+            <button
+              onClick={async () => {
+                const r = await claimDailyReward();
+                if (r.ok) showToast("success", t("mis.claimed", { n: fmtInt(DAILY_REWARD) }));
+                else showToast("info", trServer(t, r.error, "err.rewardDone"));
+              }}
+              disabled={!canClaimReward}
+              className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                canClaimReward
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {canClaimReward
+                ? t("side.claim", { n: fmtInt(DAILY_REWARD) })
+                : t("side.claimed")}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Level card */}
