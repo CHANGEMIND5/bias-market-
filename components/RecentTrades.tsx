@@ -11,6 +11,7 @@ interface Row {
   shares: number;
   fan: number;
   time: string; // ISO
+  isSystem?: boolean;
   mine: boolean;
 }
 
@@ -116,8 +117,15 @@ export default function RecentTrades({
                   <span className="ml-1 text-[9px] text-violet-500 font-semibold">나</span>
                 )}
               </td>
-              <td className={`py-2 font-semibold ${r.side === "buy" ? "text-up" : "text-down"}`}>
-                {r.side === "buy" ? "매수" : "매도"}
+              <td className="py-2">
+                {r.isSystem && (
+                  <span className="mr-1 px-1 py-0.5 rounded bg-gray-100 text-gray-400 text-[9px] font-bold align-middle">
+                    SYSTEM
+                  </span>
+                )}
+                <span className={`font-semibold ${r.side === "buy" ? "text-up" : "text-down"}`}>
+                  {r.side === "buy" ? "매수" : "매도"}
+                </span>
               </td>
               <td className="py-2 text-right">{fmt(r.price)}</td>
               <td className="py-2 text-right">{fmtShares(r.shares)}</td>
@@ -126,6 +134,9 @@ export default function RecentTrades({
           ))}
         </tbody>
       </table>
+      <p className="mt-2 text-[10px] text-gray-300">
+        SYSTEM으로 표시된 거래는 팬덤 마켓의 기본 활성을 위한 가상 시스템 거래입니다.
+      </p>
     </div>
   );
 }

@@ -3,13 +3,23 @@ import { getServerSession } from "next-auth";
 import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { runMarketActivityBot } from "@/lib/marketActivityBot";
 import { ensureMarkets } from "@/lib/markets";
 import { STARTING_BALANCE } from "@/lib/mockData";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const markets = await ensureMarkets();
+  await ensureMarkets();
+
+  // 시스템 가상 거래 봇 — 30분 이상 지났으면 밀린 활동 생성
+  try {
+    await runMarketActivityBot();
+  } catch {
+    // 봇 실패가 상태 조회를 막으면 안 됨
+  }
+
+  const markets = await prisma.market.findMany();
   const marketMap = Object.fromEntries(markets.map((m) => [m.groupId, m]));
 
   const session = await getServerSession(authOptions);

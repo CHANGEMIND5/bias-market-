@@ -31,6 +31,8 @@ export async function GET(req: Request) {
       shares: t.shares,
       fan: t.fan,
       time: t.createdAt.toISOString(),
+      isSystem: t.isSystem,
+      actor: t.isSystem ? "SYSTEM" : null,
       mine: uid !== null && t.userId === uid,
     })),
   });

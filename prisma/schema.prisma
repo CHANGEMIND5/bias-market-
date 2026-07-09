@@ -81,18 +81,20 @@ model Holding {
 
 model Trade {
   id        String   @id @default(cuid())
-  userId    String
+  userId    String? // null = 시스템 거래 (marketActivityBot)
   groupId   String
   side      String // "buy" | "sell"
   price     Float
   shares    Float
   fan       Float
   fee       Float
+  isSystem  Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([groupId, createdAt])
+  @@index([isSystem, createdAt])
 }
 
 model PricePoint {
