@@ -96,6 +96,7 @@ export async function GET() {
       isAdmin: isAdminEmail(session?.user?.email),
       refCode: user.refCode,
       refCount: user.refCount,
+      hasReferrer: !!user.referredBy,
     },
     holdings: Object.fromEntries(
       holdings.map((h) => [h.groupId, { shares: h.shares, cost: h.cost }])

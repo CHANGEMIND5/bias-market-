@@ -53,6 +53,7 @@ interface StoreValue {
   markBadgeEarned: (id: string) => void;
   refCode: string | null;
   refCount: number;
+  hasReferrer: boolean;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -105,6 +106,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [userImage, setUserImage] = useState<string | null>(null);
   const [refCode, setRefCode] = useState<string | null>(null);
   const [refCount, setRefCount] = useState(0);
+  const [hasReferrer, setHasReferrer] = useState(false);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [game, setGame] = useState<GameData>(DEFAULT_GAME);
 
@@ -174,6 +176,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setUserImage(data.user?.image ?? null);
       setRefCode(data.user?.refCode ?? null);
       setRefCount(data.user?.refCount ?? 0);
+      setHasReferrer(data.user?.hasReferrer === true);
       setHydrated(true);
     } catch {
       // server unreachable — keep showing current data
@@ -344,7 +347,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const value: StoreValue = {
     state, hydrated, loggedIn, isAdmin, userName, userImage, updateName, updateAvatar,
-    game, recordShareCopy, markBadgeEarned, refCode, refCount,
+    game, recordShareCopy, markBadgeEarned, refCode, refCount, hasReferrer,
     toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,

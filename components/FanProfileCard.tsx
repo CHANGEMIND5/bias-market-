@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Emblem from "./Emblem";
 import { spotPrice } from "@/lib/amm";
 import { battleRanking } from "@/lib/battle";
 import { computeBadges, fanInfluence, influenceTitle } from "@/lib/badges";
+import { sendJSON } from "@/lib/data/api";
 import { fmtInt, fmtShares } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
 import {
@@ -16,9 +17,41 @@ import {
 import { useStore } from "@/lib/store";
 
 export default function FanProfileCard() {
-  const { state, portfolioValue, game, refCode, refCount, loggedIn, showToast } =
-    useStore();
+  const {
+    state, portfolioValue, game, refCode, refCount, hasReferrer,
+    loggedIn, showToast, refresh,
+  } = useStore();
   const { t } = useLang();
+  const [codeDraft, setCodeDraft] = useState("");
+  const [applying, setApplying] = useState(false);
+
+  // 초대 코드 입력 가능 조건: 로그인 + 아직 초대 관계 없음 + 첫 거래 전
+  const canEnterCode =
+    loggedIn && !hasReferrer && state.trades.length === 0;
+
+  const applyCode = async () => {
+    const code = codeDraft.trim().toUpperCase();
+    if (!code || applying) return;
+    if (refCode && code === refCode) {
+      showToast("error", t("ref.invalid"));
+      return;
+    }
+    setApplying(true);
+    try {
+      const d = await sendJSON("/api/referral", { code });
+      if (d?.ok) {
+        showToast("success", t("ref.applied"));
+        setCodeDraft("");
+        refresh(); // hasReferrer 갱신 → 입력 칸 숨김
+      } else {
+        showToast("error", t("ref.invalid"));
+      }
+    } catch {
+      showToast("error", t("err.network"));
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const copyInvite = async () => {
     if (!refCode) return;
@@ -178,6 +211,35 @@ export default function FanProfileCard() {
               {t("ref.copy")}
             </button>
           </div>
+
+          {/* 초대 코드 입력 — 신규 유저(첫 거래 전, 미적용)에게만 노출 */}
+          {canEnterCode && (
+            <div className="mt-3 rounded-xl border border-dashed border-violet-200 bg-violet-50/40 p-3">
+              <p className="text-[11px] font-semibold text-violet-600">
+                {t("ref.enterTitle")}
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <input
+                  value={codeDraft}
+                  onChange={(e) =>
+                    setCodeDraft(e.target.value.toUpperCase().slice(0, 12))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) applyCode();
+                  }}
+                  placeholder={t("ref.enterPlaceholder")}
+                  className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold tracking-widest outline-none focus:border-violet-400"
+                />
+                <button
+                  onClick={applyCode}
+                  disabled={applying || codeDraft.trim().length === 0}
+                  className="shrink-0 px-3 py-2 rounded-lg bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white text-xs font-semibold transition-colors"
+                >
+                  {t("ref.apply")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
