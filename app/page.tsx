@@ -72,6 +72,7 @@ export default function Page() {
           <footer className="text-[11px] leading-relaxed text-gray-400 px-2 pb-6">
             <p>{t("disclaimer")}</p>
             <p className="mt-1.5">{DISCLAIMER_EN}</p>
+            <p className="mt-1.5">{t("footer.namesNote")}</p>
             <p className="mt-2">
               <a href="/privacy" className="underline hover:text-gray-600">
                 {t("footer.privacy")}

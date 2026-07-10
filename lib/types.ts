@@ -1,10 +1,31 @@
+/** 시드 분류 상태 — Bias Market 내부 분류일 뿐, 공식 활동 상태 주장이 아님 */
+export type SeedStatus =
+  | "active_candidate"
+  | "rookie_candidate"
+  | "legacy_candidate"
+  | "check"
+  | "hidden";
+
+export type GroupGender = "boy" | "girl" | "coed";
+
+export type Generation =
+  | "1st" | "2nd" | "3rd" | "4th" | "5th" | "rookie" | "unknown";
+
 export interface Group {
-  id: string;
-  name: string;
-  /** "group" = 그룹 종목, "member" = 멤버 개인 종목 */
+  id: string; // slug 역할 (소문자, 하이픈, ASCII)
+  name: string; // displayName — 글로벌/영문/로마자 표기 (로케일 불변)
+  /** "group" = 그룹 종목, "member" = 멤버 개인 종목 (marketType) */
   category: "group" | "member";
   /** 멤버 종목일 때 소속 그룹의 id */
   parentGroup?: string;
+  koreanName?: string; // 한글 원어 표기 (한국어 UI 보조 표시용)
+  aliases?: string[]; // 검색 별칭: 한글, 영문, 옛 이름, 약칭
+  koreanFandomName?: string;
+  gender?: GroupGender; // 보이/걸/혼성 (멤버는 소속 그룹 기준)
+  generation?: Generation;
+  seedStatus?: SeedStatus; // 기본 active_candidate
+  defaultVisible?: boolean; // 메인 마켓 기본 노출 여부 (기본 true)
+  sourceNote?: string;
   fandom: string;
   debut: string;
   platforms: string;

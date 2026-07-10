@@ -22,7 +22,7 @@ export default function MarketDetailPage() {
   const params = useParams<{ slug: string }>();
   const group = resolveSlug(params?.slug ?? "");
   const { state, hydrated, toggleFavorite } = useStore();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [shareOpen, setShareOpen] = useState(false);
 
   if (!group) {
@@ -111,8 +111,11 @@ export default function MarketDetailPage() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
+                  {lang === "ko" && group.koreanName ? `${group.koreanName} · ` : ""}
                   {parent ? `${parent.name} · ` : ""}
-                  {t("detail.fandom")} {group.fandom} ·{" "}
+                  {group.fandom !== "-"
+                    ? `${t("detail.fandom")} ${group.fandom} · `
+                    : ""}
                   {t("detail.followers", { n: fmtInt(group.followers) })}
                 </p>
               </div>
@@ -203,6 +206,7 @@ export default function MarketDetailPage() {
         <footer className="text-[11px] leading-relaxed text-gray-400 px-2 pb-6">
           <p>{t("disclaimer")}</p>
           <p className="mt-1.5">{DISCLAIMER_EN}</p>
+          <p className="mt-1.5">{t("footer.namesNote")}</p>
           <p className="mt-2">
             <Link href="/privacy" className="underline hover:text-gray-600">
               {t("footer.privacy")}

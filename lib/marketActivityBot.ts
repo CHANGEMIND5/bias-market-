@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────
 import { quoteBuy, quoteSell } from "./amm";
 import { prisma } from "./db";
-import { GROUPS } from "./mockData";
+import { VISIBLE_GROUPS } from "./mockData";
 
 const INTERVAL_MS = 30 * 60_000; // 30분
 const MAX_CATCHUP = 3; // 밀린 라운드 최대 생성 수
@@ -46,9 +46,9 @@ export async function runMarketActivityBot(): Promise<void> {
 }
 
 async function runOneRound(roundAtMs: number): Promise<void> {
-  // 특정 그룹만 조작하지 않도록 전체 종목에서 무작위 2~5개 선택
+  // 특정 그룹만 조작하지 않도록 메인 노출 종목에서 무작위 2~5개 선택
   const count = 2 + Math.floor(Math.random() * 4);
-  const ids = GROUPS.map((g) => g.id)
+  const ids = VISIBLE_GROUPS.map((g) => g.id)
     .sort(() => Math.random() - 0.5)
     .slice(0, count);
 

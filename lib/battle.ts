@@ -1,5 +1,5 @@
 import { todayString } from "./format";
-import { GROUPS } from "./mockData";
+import { VISIBLE_GROUPS } from "./mockData";
 import { hashString, mulberry32 } from "./rng";
 import { MarketState } from "./types";
 
@@ -26,7 +26,8 @@ export interface BattleEntry {
 export function battleRanking(
   markets: Record<string, MarketState>
 ): BattleEntry[] {
-  const rows = GROUPS.flatMap((g) => {
+  // 배틀 랭킹은 메인 노출(active + rookie) 종목만 대상
+  const rows = VISIBLE_GROUPS.flatMap((g) => {
     const m = markets[g.id];
     if (!m) return [];
     const price = m.fanReserve / m.shareReserve;

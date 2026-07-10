@@ -4,12 +4,50 @@ import { useMemo, useState } from "react";
 import Emblem from "./Emblem";
 import { spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtCompact, fmtPct } from "@/lib/format";
-import { useLang } from "@/lib/i18n";
-import { GROUPS, GROUP_MAP, TOTAL_SHARES } from "@/lib/mockData";
+import { TKey, useLang } from "@/lib/i18n";
+import { GROUPS, GROUP_MAP, TOTAL_SHARES, VISIBLE_GROUPS } from "@/lib/mockData";
+import { searchGroups } from "@/lib/search";
 import { useStore } from "@/lib/store";
+import { Group } from "@/lib/types";
 
 type Filter = "up" | "down" | "volume" | "name";
-type CatFilter = "all" | "group" | "member";
+type CatFilter =
+  | "all" | "group" | "member"
+  | "boy" | "girl"
+  | "rookie" | "legacy" | "check";
+
+const CAT_FILTERS: [CatFilter, TKey][] = [
+  ["all", "cat.all"],
+  ["group", "cat.group"],
+  ["member", "cat.member"],
+  ["boy", "cat.boy"],
+  ["girl", "cat.girl"],
+  ["rookie", "cat.rookie"],
+  ["legacy", "cat.legacy"],
+  ["check", "cat.check"],
+];
+
+/** 카테고리 필터별 대상 목록 (기본: active + rookie만 노출) */
+function baseListFor(cat: CatFilter): Group[] {
+  switch (cat) {
+    case "rookie":
+      return GROUPS.filter((g) => g.seedStatus === "rookie_candidate");
+    case "legacy":
+      return GROUPS.filter((g) => g.seedStatus === "legacy_candidate");
+    case "check":
+      return GROUPS.filter((g) => g.seedStatus === "check");
+    case "group":
+      return VISIBLE_GROUPS.filter((g) => g.category === "group");
+    case "member":
+      return VISIBLE_GROUPS.filter((g) => g.category === "member");
+    case "boy":
+      return VISIBLE_GROUPS.filter((g) => g.gender === "boy");
+    case "girl":
+      return VISIBLE_GROUPS.filter((g) => g.gender === "girl");
+    default:
+      return VISIBLE_GROUPS;
+  }
+}
 
 function pctChange(price: number, baseline: number): number {
   return baseline > 0 ? ((price - baseline) / baseline) * 100 : 0;
@@ -25,15 +63,22 @@ export default function MarketTable({
   favoritesOnly?: boolean;
 }) {
   const { state, toggleFavorite } = useStore();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [filter, setFilter] = useState<Filter>("up");
   const [catFilter, setCatFilter] = useState<CatFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showFavs, setShowFavs] = useState(favoritesOnly);
   const [expanded, setExpanded] = useState(false);
 
   const rows = useMemo(() => {
-    const list = GROUPS.map((g) => {
+    // 검색 중이면 전체 DB(hidden 제외)에서, 아니면 카테고리 필터 기준
+    const source = searchQuery.trim()
+      ? searchGroups(searchQuery)
+      : baseListFor(catFilter);
+
+    const toRow = (g: Group) => {
       const m = state.markets[g.id];
+      if (!m) return null;
       const price = spotPrice(m);
       return {
         group: g,
@@ -45,20 +90,29 @@ export default function MarketTable({
         volume: m.volume24h,
         fav: state.favorites.includes(g.id),
       };
-    });
+    };
+    const list = source.map(toRow).filter(Boolean) as NonNullable<
+      ReturnType<typeof toRow>
+    >[];
+
     let filtered = showFavs || favoritesOnly ? list.filter((r) => r.fav) : list;
-    if (catFilter !== "all") filtered = filtered.filter((r) => r.group.category === catFilter);
-    switch (filter) {
-      case "up": filtered = [...filtered].sort((a, b) => b.ch24h - a.ch24h); break;
-      case "down": filtered = [...filtered].sort((a, b) => a.ch24h - b.ch24h); break;
-      case "volume": filtered = [...filtered].sort((a, b) => b.volume - a.volume); break;
-      case "name": filtered = [...filtered].sort((a, b) => a.group.name.localeCompare(b.group.name)); break;
+    if (!searchQuery.trim()) {
+      switch (filter) {
+        case "up": filtered = [...filtered].sort((a, b) => b.ch24h - a.ch24h); break;
+        case "down": filtered = [...filtered].sort((a, b) => a.ch24h - b.ch24h); break;
+        case "volume": filtered = [...filtered].sort((a, b) => b.volume - a.volume); break;
+        case "name": filtered = [...filtered].sort((a, b) => a.group.name.localeCompare(b.group.name)); break;
+      }
     }
-    // Rank is always by fandom value (market cap)
-    const byCap = [...list].sort((a, b) => b.marketCap - a.marketCap);
-    const rankMap = new Map(byCap.map((r, i) => [r.group.id, i + 1]));
+
+    // 순위는 항상 "기본 노출 종목"의 팬덤 가치 기준 (레거시/체크는 "-")
+    const visibleCaps = VISIBLE_GROUPS.map((g) => {
+      const m = state.markets[g.id];
+      return { id: g.id, cap: m ? spotPrice(m) * TOTAL_SHARES : 0 };
+    }).sort((a, b) => b.cap - a.cap);
+    const rankMap = new Map(visibleCaps.map((r, i) => [r.id, i + 1]));
     return filtered.map((r) => ({ ...r, rank: rankMap.get(r.group.id) ?? 0 }));
-  }, [state.markets, state.favorites, filter, catFilter, showFavs, favoritesOnly]);
+  }, [state.markets, state.favorites, filter, catFilter, searchQuery, showFavs, favoritesOnly]);
 
   const visible = expanded ? rows : rows.slice(0, 10);
 
@@ -85,25 +139,29 @@ export default function MarketTable({
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">{t("table.subtitle")}</p>
         </div>
-        <div className="flex items-center gap-1 flex-wrap">
-          <div className="flex items-center gap-1 rounded-xl border border-gray-200 p-0.5 mr-1">
-            {(
-              [
-                ["all", t("cat.all")],
-                ["group", t("cat.group")],
-                ["member", t("cat.member")],
-              ] as [CatFilter, string][]
-            ).map(([key, label]) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* 검색 — 영문/한글/별칭/팬덤명 전부 검색됨 */}
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("search.placeholder")}
+            className="w-40 px-3 py-1.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-emerald-400"
+          />
+          <div className="flex items-center gap-0.5 rounded-xl border border-gray-200 p-0.5 flex-wrap">
+            {CAT_FILTERS.map(([key, labelKey]) => (
               <button
                 key={key}
-                onClick={() => setCatFilter(key)}
-                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  catFilter === key
+                onClick={() => {
+                  setCatFilter(key);
+                  setSearchQuery("");
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                  catFilter === key && !searchQuery
                     ? "bg-gray-900 text-white"
                     : "text-gray-500 hover:bg-gray-50"
                 }`}
               >
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
@@ -151,7 +209,7 @@ export default function MarketTable({
             >
               {r.fav ? "★" : "☆"}
             </button>
-            <span className="w-5 text-xs text-gray-400">{r.rank}</span>
+            <span className="w-5 text-xs text-gray-400">{r.rank || "–"}</span>
             <Emblem group={r.group} size={30} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">
@@ -159,6 +217,11 @@ export default function MarketTable({
                 {r.group.category === "member" && r.group.parentGroup && (
                   <span className="ml-1.5 text-[10px] text-gray-400 font-medium">
                     {GROUP_MAP[r.group.parentGroup]?.name}
+                  </span>
+                )}
+                {lang === "ko" && r.group.koreanName && (
+                  <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
+                    {r.group.koreanName}
                   </span>
                 )}
               </p>
@@ -233,16 +296,32 @@ export default function MarketTable({
                     {r.fav ? "★" : "☆"}
                   </button>
                 </td>
-                <td className="px-2 py-3.5 text-gray-500">{r.rank}</td>
+                <td className="px-2 py-3.5 text-gray-500">{r.rank || "–"}</td>
                 <td className="px-2 py-3.5">
                   <div className="flex items-center gap-2.5">
                     <Emblem group={r.group} size={28} />
-                    <span className="font-semibold">{r.group.name}</span>
-                    {r.group.category === "member" && r.group.parentGroup && (
-                      <span className="text-[11px] text-gray-400 font-medium">
-                        {GROUP_MAP[r.group.parentGroup]?.name}
-                      </span>
-                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">
+                        {r.group.name}
+                        {r.group.category === "member" && r.group.parentGroup && (
+                          <span className="ml-1.5 text-[11px] text-gray-400 font-medium">
+                            {GROUP_MAP[r.group.parentGroup]?.name}
+                          </span>
+                        )}
+                      </p>
+                      {(() => {
+                        // 한국어 UI: 한글명 · 팬덤명 / 그 외: 팬덤명만
+                        const parts = [
+                          lang === "ko" ? r.group.koreanName : null,
+                          r.group.fandom !== "-" ? r.group.fandom : null,
+                        ].filter(Boolean);
+                        return parts.length > 0 ? (
+                          <p className="text-[10px] text-gray-400 truncate">
+                            {parts.join(" · ")}
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
                 </td>
                 <td className="px-2 py-3.5 text-right font-semibold">

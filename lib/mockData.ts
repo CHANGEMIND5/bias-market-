@@ -1,3 +1,5 @@
+import { IDOL_SEEDS } from "./idolSeeds";
+import { hashString, mulberry32 } from "./rng";
 import { Group } from "./types";
 
 // ─────────────────────────────────────────────────────────────
@@ -47,7 +49,7 @@ const GROUP_SEEDS: GroupSeed[] = [
   { id: "nmixx", name: "NMIXX", fandom: "NSWER", debut: "2022-02-22", platforms: "YouTube / Instagram / TikTok", followers: 6_420_000, lastComeback: "2026-03-09", gradient: ["#c4b5fd", "#5eead4"] },
   { id: "exo", name: "EXO", fandom: "EXO-L", debut: "2012-04-08", platforms: "YouTube / Instagram / X", followers: 15_800_000, lastComeback: "2025-04-10", gradient: ["#94a3b8", "#e2e8f0"] },
   { id: "nctdream", name: "NCT DREAM", fandom: "시즈니", debut: "2016-08-25", platforms: "YouTube / Instagram / TikTok", followers: 9_400_000, lastComeback: "2025-07-14", gradient: ["#86efac", "#22d3ee"] },
-  { id: "txt", name: "TOMORROW X TOGETHER", fandom: "MOA", debut: "2019-03-04", platforms: "Weverse / YouTube / X", followers: 12_100_000, lastComeback: "2025-11-03", gradient: ["#a5f3fc", "#f9a8d4"] },
+  { id: "txt", name: "TXT", fandom: "MOA", debut: "2019-03-04", platforms: "Weverse / YouTube / X", followers: 12_100_000, lastComeback: "2025-11-03", gradient: ["#a5f3fc", "#f9a8d4"] },
   { id: "enhypen", name: "ENHYPEN", fandom: "ENGENE", debut: "2020-11-30", platforms: "Weverse / YouTube / TikTok", followers: 11_600_000, lastComeback: "2026-01-19", gradient: ["#fda4af", "#111827"] },
   { id: "ateez", name: "ATEEZ", fandom: "ATINY", debut: "2018-10-24", platforms: "YouTube / Instagram / X", followers: 8_700_000, lastComeback: "2025-12-05", gradient: ["#fdba74", "#ef4444"] },
   { id: "itzy", name: "ITZY", fandom: "MIDZY", debut: "2019-02-12", platforms: "YouTube / Instagram / TikTok", followers: 9_900_000, lastComeback: "2025-06-09", gradient: ["#fde047", "#fb7185"] },
@@ -132,17 +134,60 @@ const fairStart = {
   seedHolders: 0,
 };
 
+// ─────────────────────────────────────────────────────────────
+// 기존 라이브 마켓 20팀의 메타데이터 보강 (id는 절대 바꾸지 말 것 — 라이브 마켓 키)
+// seedStatus 기본값은 active_candidate / defaultVisible true이며 여기서 덮어씀
+// ─────────────────────────────────────────────────────────────
+const ENRICH: Record<string, Partial<Group>> = {
+  bts: { koreanName: "방탄소년단", aliases: ["방탄소년단", "Bangtan Boys", "Bangtan"], gender: "boy" },
+  blackpink: { koreanName: "블랙핑크", aliases: ["블랙핑크", "블핑"], gender: "girl" },
+  seventeen: { koreanName: "세븐틴", aliases: ["세븐틴", "세븐틴", "SVT"], gender: "boy" },
+  straykids: { koreanName: "스트레이 키즈", aliases: ["스트레이 키즈", "스키즈", "SKZ"], gender: "boy" },
+  twice: { koreanName: "트와이스", aliases: ["트와이스"], gender: "girl" },
+  ive: { koreanName: "아이브", aliases: ["아이브"], gender: "girl" },
+  aespa: { koreanName: "에스파", aliases: ["에스파"], gender: "girl" },
+  lesserafim: { koreanName: "르세라핌", aliases: ["르세라핌", "LE SSERAFIM"], gender: "girl" },
+  newjeans: {
+    koreanName: "뉴진스", aliases: ["뉴진스", "NJZ"], gender: "girl",
+    seedStatus: "check", defaultVisible: false,
+    sourceNote: "활동 상태 확인 필요 (내부 분류)",
+  },
+  nmixx: { koreanName: "엔믹스", aliases: ["엔믹스"], gender: "girl" },
+  exo: { koreanName: "엑소", aliases: ["엑소"], gender: "boy" },
+  nctdream: { koreanName: "엔시티 드림", aliases: ["엔시티 드림", "엔드림"], gender: "boy" },
+  txt: {
+    koreanName: "투모로우바이투게더",
+    aliases: ["투모로우바이투게더", "Tomorrow X Together", "투바투"],
+    gender: "boy",
+  },
+  enhypen: { koreanName: "엔하이픈", aliases: ["엔하이픈"], gender: "boy" },
+  ateez: { koreanName: "에이티즈", aliases: ["에이티즈"], gender: "boy" },
+  itzy: { koreanName: "있지", aliases: ["있지"], gender: "girl" },
+  gidle: {
+    koreanName: "아이들",
+    aliases: ["아이들", "여자아이들", "(G)I-DLE", "GIDLE"],
+    gender: "girl",
+  },
+  redvelvet: { koreanName: "레드벨벳", aliases: ["레드벨벳", "레벨"], gender: "girl" },
+  riize: { koreanName: "라이즈", aliases: ["라이즈"], gender: "boy" },
+  babymonster: { koreanName: "베이비몬스터", aliases: ["베이비몬스터", "베몬"], gender: "girl" },
+};
+
 const groupAssets: Group[] = GROUP_SEEDS.map((g) => ({
   ...g,
   category: "group" as const,
   status: "활동 중",
   ...fairStart,
+  seedStatus: "active_candidate" as const,
+  defaultVisible: true,
+  ...ENRICH[g.id],
 }));
 
 const groupSeedMap = new Map(GROUP_SEEDS.map((g) => [g.id, g]));
 
 const memberAssets: Group[] = MEMBER_SEEDS.map(([id, parent, name, followers], i) => {
   const pg = groupSeedMap.get(parent)!;
+  const pe = ENRICH[parent] ?? {};
   return {
     id,
     name,
@@ -155,11 +200,79 @@ const memberAssets: Group[] = MEMBER_SEEDS.map(([id, parent, name, followers], i
     lastComeback: pg.lastComeback,
     status: "활동 중",
     gradient: MEMBER_PALETTE[i % MEMBER_PALETTE.length],
+    gender: pe.gender,
+    // 소속 그룹이 check/비노출이면 멤버도 동일하게
+    seedStatus: pe.seedStatus ?? ("active_candidate" as const),
+    defaultVisible: pe.defaultVisible ?? true,
     ...fairStart,
   };
 });
 
-export const GROUPS: Group[] = [...groupAssets, ...memberAssets];
+// ─────────────────────────────────────────────────────────────
+// 대형 시드 DB(lib/idolSeeds.ts) → Group 변환
+// - 슬러그/이름 정규화로 기존 라이브 마켓과 dedupe (기존 데이터 보존)
+// - 모든 신규 마켓은 1 Fan$ · 1,000,000 Shares 공평 출발
+// ─────────────────────────────────────────────────────────────
+const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9가-힯]/g, "");
+const slugifyName = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+const SEED_PALETTE = MEMBER_PALETTE;
+
+function buildSeedAssets(): Group[] {
+  const takenNames = new Set<string>();
+  const takenIds = new Set<string>();
+  for (const g of [...groupAssets, ...memberAssets]) {
+    takenNames.add(normName(g.name));
+    if (g.koreanName) takenNames.add(normName(g.koreanName));
+    for (const a of g.aliases ?? []) takenNames.add(normName(a));
+    takenIds.add(g.id);
+  }
+
+  const out: Group[] = [];
+  for (const [name, gender, seedStatus, kor, fandom, aliases] of IDOL_SEEDS) {
+    const n = normName(name);
+    if (takenNames.has(n)) continue; // 기존 마켓/이전 항목과 중복 → 건너뜀
+    takenNames.add(n);
+    if (kor) takenNames.add(normName(kor));
+    for (const a of aliases ?? []) takenNames.add(normName(a));
+
+    let id = slugifyName(name) || `g${hashString(name).toString(36)}`;
+    while (takenIds.has(id)) id = `${id}-2`;
+    takenIds.add(id);
+
+    const rand = mulberry32(hashString(name));
+    const visible = seedStatus === "active_candidate" || seedStatus === "rookie_candidate";
+    const allAliases = [...(kor ? [kor] : []), ...(aliases ?? [])];
+
+    out.push({
+      id,
+      name,
+      category: "group",
+      koreanName: kor ?? undefined,
+      aliases: allAliases,
+      gender,
+      seedStatus,
+      defaultVisible: visible,
+      fandom: fandom ?? "-",
+      debut: "-",
+      platforms: "YouTube / Instagram",
+      followers: Math.round(100_000 + rand() * 2_900_000),
+      lastComeback: "-",
+      status: "활동 중",
+      gradient: SEED_PALETTE[hashString(name) % SEED_PALETTE.length],
+      ...fairStart,
+    });
+  }
+  return out;
+}
+
+export const GROUPS: Group[] = [...groupAssets, ...memberAssets, ...buildSeedAssets()];
+
+/** 메인 마켓 기본 노출 대상 (active + rookie) — 배틀/봇/랭킹도 이 목록 기준 */
+export const VISIBLE_GROUPS: Group[] = GROUPS.filter(
+  (g) => g.defaultVisible !== false
+);
 
 export const GROUP_MAP: Record<string, Group> = Object.fromEntries(
   GROUPS.map((g) => [g.id, g])
