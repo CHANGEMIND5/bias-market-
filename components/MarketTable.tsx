@@ -105,12 +105,10 @@ export default function MarketTable({
       }
     }
 
-    // 순위는 항상 "기본 노출 종목"의 팬덤 가치 기준 (레거시/체크는 "-")
-    const visibleCaps = VISIBLE_GROUPS.map((g) => {
-      const m = state.markets[g.id];
-      return { id: g.id, cap: m ? spotPrice(m) * TOTAL_SHARES : 0 };
-    }).sort((a, b) => b.cap - a.cap);
-    const rankMap = new Map(visibleCaps.map((r, i) => [r.id, i + 1]));
+    // 순위는 "현재 보고 있는 목록(필터/검색 결과)" 안에서의 팬덤 가치 기준
+    // — 신인 탭이면 신인들끼리 1위부터, 레거시 탭이면 레거시끼리
+    const byCap = [...list].sort((a, b) => b.marketCap - a.marketCap);
+    const rankMap = new Map(byCap.map((r, i) => [r.group.id, i + 1]));
     return filtered.map((r) => ({ ...r, rank: rankMap.get(r.group.id) ?? 0 }));
   }, [state.markets, state.favorites, filter, catFilter, searchQuery, showFavs, favoritesOnly]);
 
