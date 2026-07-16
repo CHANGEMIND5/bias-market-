@@ -27,6 +27,11 @@ interface ApiCandle {
   volume: number; // Fan$ traded
 }
 
+type ChartMode = "line" | "candles";
+type PriceSeries = ISeriesApi<"Candlestick"> | ISeriesApi<"Area">;
+
+const CHART_MODE_KEY = "bias-market-chart-mode";
+
 // ── 시간 간격 (정리된 6개) ─────────────────────────────
 const TIMEFRAMES: { labelKey: TKey; minutes: number }[] = [
   { labelKey: "tf.1m", minutes: 1 },
@@ -61,6 +66,8 @@ export default function PriceChart({
   const { t } = useLang();
   const [tf, setTf] = useState(3); // default 1시간
   const [demo, setDemo] = useState(false);
+  // 차트 표시 모드 — 기본은 선 차트, 선택은 localStorage에 저장
+  const [mode, setMode] = useState<ChartMode>("line");
   const tRef = useRef(t);
   tRef.current = t;
 
@@ -68,12 +75,36 @@ export default function PriceChart({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const priceSeriesRef = useRef<PriceSeries | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const priceLineRef = useRef<IPriceLine | null>(null);
   const avgLineRef = useRef<IPriceLine | null>(null);
   const dataMapRef = useRef<Map<number, ApiCandle>>(new Map());
+  const lastCandlesRef = useRef<ApiCandle[]>([]);
   const fitRef = useRef(true);
+  const modeRef = useRef<ChartMode>(mode);
+  modeRef.current = mode;
+  // 라인/시리즈 재생성 시 가격선·평균선 effect를 다시 돌리기 위한 버전
+  const [seriesVersion, setSeriesVersion] = useState(0);
+
+  // 저장된 차트 모드 복원 (마운트 후 — SSR 불일치 방지)
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CHART_MODE_KEY);
+      if (saved === "line" || saved === "candles") setMode(saved);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const pickMode = (m: ChartMode) => {
+    setMode(m);
+    try {
+      window.localStorage.setItem(CHART_MODE_KEY, m);
+    } catch {
+      // ignore
+    }
+  };
 
   // 최신 유저 거래를 load 클로저에서 안전하게 읽기 위한 ref
   const tradesRef = useRef(state.trades);
@@ -84,6 +115,104 @@ export default function PriceChart({
     holding && holding.shares > 0 ? holding.cost / holding.shares : null;
 
   const tzOffSec = new Date().getTimezoneOffset() * 60;
+  const toTime = useCallback(
+    (ms: number) => (Math.floor(ms / 1000) - tzOffSec) as UTCTimestamp,
+    [tzOffSec]
+  );
+
+  // ── 가격 시리즈 생성 (모드별) ─────────────────────────
+  const createPriceSeries = useCallback(
+    (chart: IChartApi, m: ChartMode): PriceSeries => {
+      const precise = price < 5;
+      const priceFormat = {
+        type: "price" as const,
+        precision: precise ? 4 : 2,
+        minMove: precise ? 0.0001 : 0.01,
+      };
+      if (m === "candles") {
+        return chart.addCandlestickSeries({
+          upColor: "#0ea06c",
+          downColor: "#e5484d",
+          borderUpColor: "#0ea06c",
+          borderDownColor: "#e5484d",
+          wickUpColor: "#0ea06c",
+          wickDownColor: "#e5484d",
+          lastValueVisible: false,
+          priceLineVisible: false,
+          priceFormat,
+        });
+      }
+      // 선 차트: 약간 두꺼운 선 + 아래로 아주 옅은 그라데이션
+      return chart.addAreaSeries({
+        lineColor: "#7c3aed",
+        lineWidth: 2,
+        topColor: "rgba(124, 58, 246, 0.14)",
+        bottomColor: "rgba(124, 58, 246, 0)",
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerRadius: 4,
+        priceFormat,
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groupId]
+  );
+
+  // ── 데이터 → 시리즈 반영 (모드별 변환 + 마커) ──────────
+  const applyData = useCallback(
+    (candles: ApiCandle[]) => {
+      const series = priceSeriesRef.current;
+      const volume = volumeRef.current;
+      if (!series || !volume) return;
+
+      if (modeRef.current === "candles") {
+        (series as ISeriesApi<"Candlestick">).setData(
+          candles.map((c) => ({
+            time: toTime(c.t),
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          }))
+        );
+      } else {
+        // 선 차트: 각 캔들의 종가(close)만 사용
+        (series as ISeriesApi<"Area">).setData(
+          candles.map((c) => ({ time: toTime(c.t), value: c.close }))
+        );
+      }
+
+      volume.setData(
+        candles.map((c) => ({
+          time: toTime(c.t),
+          value: c.volume,
+          color:
+            c.close >= c.open ? "rgba(14,160,108,0.35)" : "rgba(229,72,77,0.35)",
+        }))
+      );
+
+      // 매수/매도 마커 — 내 거래를 캔들 버킷에 스냅
+      const minutes = TIMEFRAMES[tf].minutes;
+      const bucketMs = minutes * 60_000;
+      const rangeStart = candles[0]?.t ?? 0;
+      const rangeEnd = (candles[candles.length - 1]?.t ?? 0) + bucketMs;
+      const markers: SeriesMarker<Time>[] = tradesRef.current
+        .filter((tr) => tr.groupId === groupId)
+        .map((tr) => ({ ...tr, ms: new Date(tr.time).getTime() }))
+        .filter((tr) => tr.ms >= rangeStart && tr.ms < rangeEnd)
+        .slice(0, 60)
+        .map((tr) => ({
+          time: toTime(Math.floor(tr.ms / bucketMs) * bucketMs),
+          position: tr.side === "buy" ? ("belowBar" as const) : ("aboveBar" as const),
+          color: tr.side === "buy" ? "#0ea06c" : "#e5484d",
+          shape: tr.side === "buy" ? ("arrowUp" as const) : ("arrowDown" as const),
+          text: tr.side === "buy" ? tRef.current("buy") : tRef.current("sell"),
+        }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
+      series.setMarkers(markers);
+    },
+    [groupId, tf, toTime]
+  );
 
   // ── 차트 생성 (그룹당 1회) — 차트 설정은 여기 ──────────
   useEffect(() => {
@@ -97,7 +226,7 @@ export default function PriceChart({
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#9ca3af",
         fontSize: 11,
-        attributionLogo: true, // TradingView 어트리뷰션 유지
+        attributionLogo: true,
       },
       grid: {
         vertLines: { color: "#f3f4f6" },
@@ -116,23 +245,7 @@ export default function PriceChart({
       },
     });
 
-    const precise = price < 5;
-    const candles = chart.addCandlestickSeries({
-      upColor: "#0ea06c",
-      downColor: "#e5484d",
-      borderUpColor: "#0ea06c",
-      borderDownColor: "#e5484d",
-      wickUpColor: "#0ea06c",
-      wickDownColor: "#e5484d",
-      // 현재가 표시는 아래의 커스텀 price line으로만
-      lastValueVisible: false,
-      priceLineVisible: false,
-      priceFormat: {
-        type: "price",
-        precision: precise ? 4 : 2,
-        minMove: precise ? 0.0001 : 0.01,
-      },
-    });
+    const series = createPriceSeries(chart, modeRef.current);
 
     const volume = chart.addHistogramSeries({
       priceScaleId: "",
@@ -145,13 +258,13 @@ export default function PriceChart({
     });
 
     chartRef.current = chart;
-    candleRef.current = candles;
+    priceSeriesRef.current = series;
     volumeRef.current = volume;
     priceLineRef.current = null;
     avgLineRef.current = null;
     fitRef.current = true;
+    setSeriesVersion((v) => v + 1);
 
-    // ── 크로스헤어 툴팁 ──────────────────────────────
     const onCrosshair = (param: {
       time?: unknown;
       point?: { x: number; y: number };
@@ -159,8 +272,8 @@ export default function PriceChart({
       const tooltip = tooltipRef.current;
       const wrap = wrapRef.current;
       if (!tooltip || !wrap) return;
-      const t = typeof param.time === "number" ? param.time : null;
-      const c = t !== null ? dataMapRef.current.get(t) : undefined;
+      const time = typeof param.time === "number" ? param.time : null;
+      const c = time !== null ? dataMapRef.current.get(time) : undefined;
       if (!c || !param.point) {
         tooltip.style.display = "none";
         return;
@@ -194,7 +307,7 @@ export default function PriceChart({
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
-      candleRef.current = null;
+      priceSeriesRef.current = null;
       volumeRef.current = null;
       priceLineRef.current = null;
       avgLineRef.current = null;
@@ -202,62 +315,44 @@ export default function PriceChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
 
-  // 툴팁에서 현재 선택된 간격을 읽기 위한 ref
   const tfRef = useRef(tf);
   tfRef.current = tf;
 
-  // ── OHLCV 데이터 로드 + 매수/매도 마커 ────────────────
+  // ── 모드 전환: 데이터 재요청 없이 시리즈만 교체 ─────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    const old = priceSeriesRef.current;
+    if (!chart || !old) return;
+
+    // 보고 있던 시간 범위 보존
+    const range = chart.timeScale().getVisibleLogicalRange();
+
+    priceLineRef.current = null;
+    avgLineRef.current = null;
+    chart.removeSeries(old);
+    priceSeriesRef.current = createPriceSeries(chart, mode);
+    applyData(lastCandlesRef.current);
+    if (range) chart.timeScale().setVisibleLogicalRange(range);
+    setSeriesVersion((v) => v + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  // ── OHLCV 데이터 로드 ────────────────────────────────
   const load = useCallback(async () => {
     try {
       const minutes = TIMEFRAMES[tf].minutes;
       const data = await getMarketHistory(groupId, minutes);
-      if (!Array.isArray(data.candles) || !candleRef.current || !volumeRef.current) return;
+      if (!Array.isArray(data.candles) || !priceSeriesRef.current) return;
 
       const apiCandles = data.candles as ApiCandle[];
-      const toTime = (ms: number) =>
-        (Math.floor(ms / 1000) - tzOffSec) as UTCTimestamp;
-
+      lastCandlesRef.current = apiCandles;
       dataMapRef.current = new Map(
         apiCandles.map((c) => [toTime(c.t) as number, c])
       );
 
-      candleRef.current.setData(
-        apiCandles.map((c) => ({
-          time: toTime(c.t),
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-        }))
-      );
-      volumeRef.current.setData(
-        apiCandles.map((c) => ({
-          time: toTime(c.t),
-          value: c.volume,
-          color: c.close >= c.open ? "rgba(14,160,108,0.35)" : "rgba(229,72,77,0.35)",
-        }))
-      );
-
-      // 매수/매도 마커 — 내 거래 내역을 캔들 버킷에 스냅
-      const bucketMs = minutes * 60_000;
-      const rangeStart = apiCandles[0]?.t ?? 0;
-      const rangeEnd = (apiCandles[apiCandles.length - 1]?.t ?? 0) + bucketMs;
-      const markers: SeriesMarker<Time>[] = tradesRef.current
-        .filter((t) => t.groupId === groupId)
-        .map((t) => ({ ...t, ms: new Date(t.time).getTime() }))
-        .filter((t) => t.ms >= rangeStart && t.ms < rangeEnd)
-        .slice(0, 60)
-        .map((t) => ({
-          time: toTime(Math.floor(t.ms / bucketMs) * bucketMs),
-          position: t.side === "buy" ? ("belowBar" as const) : ("aboveBar" as const),
-          color: t.side === "buy" ? "#0ea06c" : "#e5484d",
-          shape: t.side === "buy" ? ("arrowUp" as const) : ("arrowDown" as const),
-          text: t.side === "buy" ? "매수" : "매도",
-        }))
-        .sort((a, b) => (a.time as number) - (b.time as number));
-      candleRef.current.setMarkers(markers);
-
+      applyData(apiCandles);
       setDemo(!!data.demo);
+
       if (fitRef.current) {
         chartRef.current?.timeScale().fitContent();
         fitRef.current = false;
@@ -265,14 +360,13 @@ export default function PriceChart({
     } catch {
       // keep last data on network hiccups
     }
-  }, [groupId, tf, tzOffSec]);
+  }, [groupId, tf, toTime, applyData]);
 
   useEffect(() => {
     fitRef.current = true;
     load();
   }, [load]);
 
-  // 내 거래 직후(가격 변동) 즉시 갱신 → 마커/캔들 반영
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -285,7 +379,7 @@ export default function PriceChart({
 
   // ── 현재가 라인 (항상 최신 가격 반영) ─────────────────
   useEffect(() => {
-    const s = candleRef.current;
+    const s = priceSeriesRef.current;
     if (!s) return;
     if (priceLineRef.current) s.removePriceLine(priceLineRef.current);
     priceLineRef.current = s.createPriceLine({
@@ -296,11 +390,11 @@ export default function PriceChart({
       axisLabelVisible: true,
       title: t("chart.currentLine"),
     });
-  }, [price, groupId, tf, t]);
+  }, [price, groupId, tf, t, seriesVersion]);
 
   // ── 평균 매입가 라인 (보유 중일 때만) ─────────────────
   useEffect(() => {
-    const s = candleRef.current;
+    const s = priceSeriesRef.current;
     if (!s) return;
     if (avgLineRef.current) {
       s.removePriceLine(avgLineRef.current);
@@ -316,11 +410,11 @@ export default function PriceChart({
         title: t("chart.avgLine", { n: fmt(avgBuyPrice) }),
       });
     }
-  }, [avgBuyPrice, groupId, tf, t]);
+  }, [avgBuyPrice, groupId, tf, t, seriesVersion]);
 
   return (
     <div>
-      {/* Interval tabs + indicators */}
+      {/* Interval tabs + mode toggle + indicators */}
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div className="flex items-center gap-1 flex-wrap">
           {TIMEFRAMES.map((tfItem, i) => (
@@ -338,6 +432,29 @@ export default function PriceChart({
           ))}
         </div>
         <div className="flex items-center gap-2">
+          {/* 차트 모드 토글 */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 p-0.5">
+            <button
+              onClick={() => pickMode("line")}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                mode === "line"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {t("chart.line")}
+            </button>
+            <button
+              onClick={() => pickMode("candles")}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                mode === "candles"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {t("chart.candles")}
+            </button>
+          </div>
           {demo && (
             <span className="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-semibold text-gray-400">
               {t("chart.demo")}
