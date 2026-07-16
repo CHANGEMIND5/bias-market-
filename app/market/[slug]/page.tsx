@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Emblem from "@/components/Emblem";
-import GroupInfoCard from "@/components/GroupInfoCard";
 import PriceChart from "@/components/PriceChart";
 import RecentTrades from "@/components/RecentTrades";
 import SharePreview from "@/components/SharePreview";
@@ -145,14 +144,21 @@ export default function MarketDetailPage() {
                     {fav ? "★" : "☆"}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {lang === "ko" && group.koreanName ? `${group.koreanName} · ` : ""}
-                  {parent ? `${parent.name} · ` : ""}
-                  {group.fandom !== "-"
-                    ? `${t("detail.fandom")} ${group.fandom} · `
-                    : ""}
-                  {t("detail.followers", { n: fmtInt(group.followers) })}
-                </p>
+                {(() => {
+                  // 있는 정보만 표시 — 없으면 줄 자체를 숨김 ("-" 표시 금지)
+                  const parts = [
+                    lang === "ko" && group.koreanName ? group.koreanName : null,
+                    parent ? parent.name : null,
+                    group.fandom && group.fandom !== "-"
+                      ? `${t("detail.fandom")} ${group.fandom}`
+                      : null,
+                  ].filter(Boolean);
+                  return parts.length > 0 ? (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {parts.join(" · ")}
+                    </p>
+                  ) : null;
+                })()}
               </div>
             </div>
             <div className="text-right">
@@ -179,13 +185,10 @@ export default function MarketDetailPage() {
 
         {/* Main grid — 모바일 순서: 거래 패널 → 차트 → 배틀 요약 → 최근 거래 → 그룹 정보 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Trade panel — first on mobile, right on desktop */}
-          <aside className="lg:col-span-4 lg:order-2 flex flex-col gap-5">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">
+          {/* Trade panel — first on mobile, right(sticky) on desktop */}
+          <aside className="lg:col-span-4 lg:order-2">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5 lg:sticky lg:top-4">
               <TradePanel group={group} onBuySuccess={() => setShareOpen(true)} />
-            </div>
-            <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 shadow-card p-5">
-              <GroupInfoCard group={group} />
             </div>
           </aside>
 
@@ -229,10 +232,6 @@ export default function MarketDetailPage() {
             </div>
             <div className="order-3 bg-white rounded-2xl border border-gray-200 shadow-card p-4 sm:p-5">
               <RecentTrades groupId={group.id} price={price} />
-            </div>
-            {/* 그룹 정보 — 모바일에서는 맨 아래 */}
-            <div className="order-4 lg:hidden bg-white rounded-2xl border border-gray-200 shadow-card p-4 sm:p-5">
-              <GroupInfoCard group={group} />
             </div>
           </section>
         </div>
