@@ -73,6 +73,7 @@ export default function Page() {
             <p>{t("disclaimer")}</p>
             <p className="mt-1.5">{DISCLAIMER_EN}</p>
             <p className="mt-1.5">{t("footer.namesNote")}</p>
+            <p className="mt-1.5">{t("footer.tierNote")}</p>
             <p className="mt-2">
               <a href="/privacy" className="underline hover:text-gray-600">
                 {t("footer.privacy")}

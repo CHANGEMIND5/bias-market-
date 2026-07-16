@@ -68,6 +68,13 @@ const ko = {
   "cat.rookie": "신인",
   "cat.legacy": "레거시",
   "cat.check": "체크 필요",
+  "cat.mega": "Mega",
+  "cat.large": "Large",
+  "cat.mid": "Mid",
+  "footer.tierNote":
+    "마켓 티어와 초기 가격은 Bias Market 내부 시뮬레이션 분류이며, 실제 인기·활동량·매출·팬덤 규모·아티스트 가치를 의미하지 않습니다.",
+  "detail.memberPrep": "멤버 마켓은 현재 준비 중입니다.",
+  "detail.memberPrepSub": "그룹 마켓에서 먼저 팬덤 배틀에 참여해 보세요!",
   "search.placeholder": "그룹·팬덤 검색",
   "footer.namesNote":
     "K-pop 그룹명과 팬덤명은 팬덤 구분 및 검색 편의를 위한 비공식 표기입니다. 활동 상태 분류는 Bias Market 내부 기준일 뿐 공식 정보가 아닙니다.",
@@ -426,6 +433,13 @@ const en: Dict = {
   "cat.rookie": "Rookies",
   "cat.legacy": "Legacy",
   "cat.check": "Needs check",
+  "cat.mega": "Mega",
+  "cat.large": "Large",
+  "cat.mid": "Mid",
+  "footer.tierNote":
+    "Market tiers and initial prices are simulated inside Bias Market and do not represent real popularity, activity level, revenue, fandom size, or artist value.",
+  "detail.memberPrep": "Member markets are coming soon.",
+  "detail.memberPrepSub": "Join the fandom battle through group markets first!",
   "search.placeholder": "Search groups & fandoms",
   "footer.namesNote":
     "Group and fandom names are used only for fandom identification and search convenience. Activity-status labels are Bias Market's internal classification, not official information.",
@@ -764,6 +778,13 @@ const es: Dict = {
   "cat.rookie": "Novatos",
   "cat.legacy": "Legado",
   "cat.check": "Por revisar",
+  "cat.mega": "Mega",
+  "cat.large": "Large",
+  "cat.mid": "Mid",
+  "footer.tierNote":
+    "Los tiers de mercado y precios iniciales son una simulación interna de Bias Market y no representan popularidad, actividad, ingresos, tamaño de fandom ni valor real del artista.",
+  "detail.memberPrep": "Los mercados de miembros llegarán pronto.",
+  "detail.memberPrepSub": "¡Únete a la batalla de fandoms desde los mercados de grupos!",
   "search.placeholder": "Buscar grupos y fandoms",
   "footer.namesNote":
     "Los nombres de grupos y fandoms se usan solo para identificación y búsqueda. Las etiquetas de estado son una clasificación interna de Bias Market, no información oficial.",

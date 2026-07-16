@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────
 import { quoteBuy, quoteSell } from "./amm";
 import { prisma } from "./db";
+import { MARKET_TIER_CONFIG } from "./marketTiers";
 import { VISIBLE_GROUPS } from "./mockData";
 
 const INTERVAL_MS = 30 * 60_000; // 30분
@@ -46,11 +47,21 @@ export async function runMarketActivityBot(): Promise<void> {
 }
 
 async function runOneRound(roundAtMs: number): Promise<void> {
-  // 특정 그룹만 조작하지 않도록 메인 노출 종목에서 무작위 2~5개 선택
+  // 메인 노출 그룹(mega/large/mid/rookie)에서만 무작위 2~5개 선택.
+  // 티어별 botActivityWeight 가중치 적용 (멤버·hidden·legacy 절대 제외)
+  const weighted: string[] = [];
+  for (const g of VISIBLE_GROUPS) {
+    const w = MARKET_TIER_CONFIG[g.tier ?? "mid"].botActivityWeight;
+    const copies = Math.max(0, Math.round(w * 5));
+    for (let i = 0; i < copies; i++) weighted.push(g.id);
+  }
   const count = 2 + Math.floor(Math.random() * 4);
-  const ids = VISIBLE_GROUPS.map((g) => g.id)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, count);
+  const ids: string[] = [];
+  const shuffled = weighted.sort(() => Math.random() - 0.5);
+  for (const id of shuffled) {
+    if (!ids.includes(id)) ids.push(id);
+    if (ids.length >= count) break;
+  }
 
   for (const groupId of ids) {
     const m = await prisma.market.findUnique({ where: { groupId } });

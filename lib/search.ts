@@ -3,19 +3,28 @@ import { Group } from "./types";
 
 // ─────────────────────────────────────────────────────────────
 // 그룹 검색 — displayName, koreanName, aliases, fandomName,
-// koreanFandomName 전부에서 부분 일치 (hidden 제외)
-// 예: "방탄"→BTS, "Bangtan"→BTS, "투바투"→TXT, "DIVE"→IVE, "BLINK"→BLACKPINK
+// koreanFandomName 전부에서 부분 일치.
+// 기본: 노출 티어(mega/large/mid/rookie)의 "그룹"만.
+// 멤버·hidden은 절대 검색되지 않고, 레거시는 옵션일 때만 포함.
+// 예: "방탄"→BTS, "빅뱅"→BIGBANG, "VIP"→BIGBANG, "DIVE"→IVE
 // ─────────────────────────────────────────────────────────────
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 
-export function searchGroups(query: string, limit = 60): Group[] {
+export function searchGroups(
+  query: string,
+  opts?: { includeLegacy?: boolean; limit?: number }
+): Group[] {
   const q = norm(query);
   if (!q) return [];
+  const limit = opts?.limit ?? 60;
   const results: { g: Group; score: number }[] = [];
 
   for (const g of GROUPS) {
-    if (g.seedStatus === "hidden") continue;
+    if (g.category === "member") continue; // 멤버 마켓 준비 중
+    const visible = g.defaultVisible !== false;
+    const legacyOk = opts?.includeLegacy === true && g.tier === "legacy";
+    if (!visible && !legacyOk) continue; // hidden/제외 그룹 검색 불가
     const haystack = [
       g.name,
       g.koreanName,

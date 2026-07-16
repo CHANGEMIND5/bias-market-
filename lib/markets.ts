@@ -4,8 +4,14 @@ import { GROUPS, INITIAL_POOL } from "./mockData";
 
 /**
  * Make sure every group in mockData has a Market row in the DB.
- * Reserves are seeded on the constant-product curve (k = INITIAL_POOL²)
- * exactly like the localStorage version did.
+ *
+ * 안전한 upsert: "없는 마켓만" 생성합니다. 이미 존재하는 마켓의
+ * 가격·리저브·거래·보유는 절대 건드리지 않습니다 (데이터 보존).
+ *
+ * 신규 마켓 초기화 (티어 기반):
+ *   initialPoolShares = 1,000,000 (총 Fan Shares와 동일 — 발행/소각 없음)
+ *   initialPoolFan   = seedPrice × 1,000,000
+ *   → initialPrice   = initialPoolFan / initialPoolShares = seedPrice
  */
 export async function ensureMarkets(): Promise<Market[]> {
   const existing = await prisma.market.findMany();
@@ -15,9 +21,8 @@ export async function ensureMarkets(): Promise<Market[]> {
 
   await prisma.market.createMany({
     data: missing.map((g) => {
-      const sqrtP = Math.sqrt(g.seedPrice);
-      const fanReserve = INITIAL_POOL * sqrtP;
-      const shareReserve = INITIAL_POOL / sqrtP;
+      const shareReserve = INITIAL_POOL;
+      const fanReserve = g.seedPrice * INITIAL_POOL;
       const price = fanReserve / shareReserve;
       return {
         groupId: g.id,

@@ -12,34 +12,40 @@ import { Group } from "@/lib/types";
 
 type Filter = "up" | "down" | "volume" | "name";
 type CatFilter =
-  | "all" | "group" | "member"
-  | "boy" | "girl"
-  | "rookie" | "legacy" | "check";
+  | "all"
+  | "mega" | "large" | "mid" | "rookie" | "legacy"
+  | "boy" | "girl";
 
 const CAT_FILTERS: [CatFilter, TKey][] = [
   ["all", "cat.all"],
-  ["group", "cat.group"],
-  ["member", "cat.member"],
-  ["boy", "cat.boy"],
-  ["girl", "cat.girl"],
+  ["mega", "cat.mega"],
+  ["large", "cat.large"],
+  ["mid", "cat.mid"],
   ["rookie", "cat.rookie"],
   ["legacy", "cat.legacy"],
-  ["check", "cat.check"],
+  ["boy", "cat.boy"],
+  ["girl", "cat.girl"],
 ];
 
-/** 카테고리 필터별 대상 목록 (기본: active + rookie만 노출) */
+/**
+ * 카테고리 필터별 대상 목록.
+ * 기본(전체): mega/large/mid/rookie 티어의 그룹만.
+ * 레거시는 레거시 탭에서만, 멤버·hidden은 어디에도 안 나옴.
+ */
 function baseListFor(cat: CatFilter): Group[] {
   switch (cat) {
+    case "mega":
+      return VISIBLE_GROUPS.filter((g) => g.tier === "mega");
+    case "large":
+      return VISIBLE_GROUPS.filter((g) => g.tier === "large");
+    case "mid":
+      return VISIBLE_GROUPS.filter((g) => g.tier === "mid");
     case "rookie":
-      return GROUPS.filter((g) => g.seedStatus === "rookie_candidate");
+      return VISIBLE_GROUPS.filter((g) => g.tier === "rookie");
     case "legacy":
-      return GROUPS.filter((g) => g.seedStatus === "legacy_candidate");
-    case "check":
-      return GROUPS.filter((g) => g.seedStatus === "check");
-    case "group":
-      return VISIBLE_GROUPS.filter((g) => g.category === "group");
-    case "member":
-      return VISIBLE_GROUPS.filter((g) => g.category === "member");
+      return GROUPS.filter(
+        (g) => g.category === "group" && g.tier === "legacy"
+      );
     case "boy":
       return VISIBLE_GROUPS.filter((g) => g.gender === "boy");
     case "girl":
@@ -71,9 +77,9 @@ export default function MarketTable({
   const [expanded, setExpanded] = useState(false);
 
   const rows = useMemo(() => {
-    // 검색 중이면 전체 DB(hidden 제외)에서, 아니면 카테고리 필터 기준
+    // 검색: 기본은 노출 그룹만, 레거시 탭에서 검색하면 레거시 포함
     const source = searchQuery.trim()
-      ? searchGroups(searchQuery)
+      ? searchGroups(searchQuery, { includeLegacy: catFilter === "legacy" })
       : baseListFor(catFilter);
 
     const toRow = (g: Group) => {

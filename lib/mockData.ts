@@ -1,4 +1,10 @@
 import { IDOL_SEEDS } from "./idolSeeds";
+import {
+  MARKET_TIER_CONFIG,
+  resolveTier,
+  tierIsVisible,
+  tierToStatus,
+} from "./marketTiers";
 import { hashString, mulberry32 } from "./rng";
 import { Group } from "./types";
 
@@ -147,11 +153,7 @@ const ENRICH: Record<string, Partial<Group>> = {
   ive: { koreanName: "아이브", aliases: ["아이브"], gender: "girl" },
   aespa: { koreanName: "에스파", aliases: ["에스파"], gender: "girl" },
   lesserafim: { koreanName: "르세라핌", aliases: ["르세라핌", "LE SSERAFIM"], gender: "girl" },
-  newjeans: {
-    koreanName: "뉴진스", aliases: ["뉴진스", "NJZ"], gender: "girl",
-    seedStatus: "check", defaultVisible: false,
-    sourceNote: "활동 상태 확인 필요 (내부 분류)",
-  },
+  newjeans: { koreanName: "뉴진스", aliases: ["뉴진스", "NJZ"], gender: "girl" },
   nmixx: { koreanName: "엔믹스", aliases: ["엔믹스"], gender: "girl" },
   exo: { koreanName: "엑소", aliases: ["엑소"], gender: "boy" },
   nctdream: { koreanName: "엔시티 드림", aliases: ["엔시티 드림", "엔드림"], gender: "boy" },
@@ -173,18 +175,48 @@ const ENRICH: Record<string, Partial<Group>> = {
   babymonster: { koreanName: "베이비몬스터", aliases: ["베이비몬스터", "베몬"], gender: "girl" },
 };
 
-const groupAssets: Group[] = GROUP_SEEDS.map((g) => ({
-  ...g,
-  category: "group" as const,
-  status: "활동 중",
-  ...fairStart,
-  seedStatus: "active_candidate" as const,
-  defaultVisible: true,
-  ...ENRICH[g.id],
-}));
+// ─────────────────────────────────────────────────────────────
+// 티어 분류 적용 — lib/marketTiers.ts의 큐레이션 리스트가 최종 결정.
+// seedPrice/seedVolume은 "새로 생성되는 마켓"의 초기값일 뿐,
+// 이미 존재하는 라이브 마켓의 가격·풀·거래에는 영향 없음 (ensureMarkets가
+// 없는 마켓만 생성하므로 기존 데이터는 절대 리셋되지 않음).
+// ─────────────────────────────────────────────────────────────
+function applyTier(g: Group): Group {
+  const tier = resolveTier(g.name, g.aliases);
+  const cfg = MARKET_TIER_CONFIG[tier];
+  const rand = mulberry32(hashString(`${g.name}-tier`));
+  const [pMin, pMax] = cfg.initialPriceRange;
+  const [vMin, vMax] = cfg.initialVolumeRange;
+  return {
+    ...g,
+    tier,
+    seedStatus: tierToStatus(tier),
+    defaultVisible: tierIsVisible(tier),
+    seedPrice: Math.round((pMin + rand() * (pMax - pMin)) * 100) / 100,
+    seedVolume24h: Math.round(vMin + rand() * (vMax - vMin)),
+    ...(tier === "mega" && g.name === "BIGBANG"
+      ? { generation: "2nd" as const }
+      : {}),
+    sourceNote:
+      "Bias Market internal simulation tier; not an official activity or popularity ranking.",
+  };
+}
+
+const groupAssets: Group[] = GROUP_SEEDS.map((g) =>
+  applyTier({
+    ...g,
+    category: "group" as const,
+    status: "활동 중",
+    ...fairStart,
+    ...ENRICH[g.id],
+  } as Group)
+);
 
 const groupSeedMap = new Map(GROUP_SEEDS.map((g) => [g.id, g]));
 
+// 멤버 마켓은 현재 전부 hidden (준비 중) — 데이터/보유/거래는 보존됨.
+// 다시 열려면: 아래 seedStatus/tier/defaultVisible을 원복하고
+// MarketTable 필터에 멤버 탭을 되살리면 됩니다.
 const memberAssets: Group[] = MEMBER_SEEDS.map(([id, parent, name, followers], i) => {
   const pg = groupSeedMap.get(parent)!;
   const pe = ENRICH[parent] ?? {};
@@ -201,9 +233,9 @@ const memberAssets: Group[] = MEMBER_SEEDS.map(([id, parent, name, followers], i
     status: "활동 중",
     gradient: MEMBER_PALETTE[i % MEMBER_PALETTE.length],
     gender: pe.gender,
-    // 소속 그룹이 check/비노출이면 멤버도 동일하게
-    seedStatus: pe.seedStatus ?? ("active_candidate" as const),
-    defaultVisible: pe.defaultVisible ?? true,
+    seedStatus: "hidden" as const,
+    tier: "hidden" as const,
+    defaultVisible: false,
     ...fairStart,
   };
 });
@@ -242,36 +274,45 @@ function buildSeedAssets(): Group[] {
     takenIds.add(id);
 
     const rand = mulberry32(hashString(name));
-    const visible = seedStatus === "active_candidate" || seedStatus === "rookie_candidate";
     const allAliases = [...(kor ? [kor] : []), ...(aliases ?? [])];
 
-    out.push({
-      id,
-      name,
-      category: "group",
-      koreanName: kor ?? undefined,
-      aliases: allAliases,
-      gender,
-      seedStatus,
-      defaultVisible: visible,
-      fandom: fandom ?? "-",
-      debut: "-",
-      platforms: "YouTube / Instagram",
-      followers: Math.round(100_000 + rand() * 2_900_000),
-      lastComeback: "-",
-      status: "활동 중",
-      gradient: SEED_PALETTE[hashString(name) % SEED_PALETTE.length],
-      ...fairStart,
-    });
+    out.push(
+      applyTier({
+        id,
+        name,
+        category: "group",
+        koreanName: kor ?? undefined,
+        aliases: allAliases,
+        gender,
+        seedStatus,
+        defaultVisible: true,
+        fandom: fandom ?? "-",
+        debut: "-",
+        platforms: "YouTube / Instagram",
+        followers: Math.round(100_000 + rand() * 2_900_000),
+        lastComeback: "-",
+        status: "활동 중",
+        gradient: SEED_PALETTE[hashString(name) % SEED_PALETTE.length],
+        ...fairStart,
+      })
+    );
   }
   return out;
 }
 
 export const GROUPS: Group[] = [...groupAssets, ...memberAssets, ...buildSeedAssets()];
 
-/** 메인 마켓 기본 노출 대상 (active + rookie) — 배틀/봇/랭킹도 이 목록 기준 */
+/**
+ * 메인 마켓 기본 노출 대상: mega/large/mid/rookie 티어의 "그룹" 종목만.
+ * 멤버·hidden·legacy 제외 — 배틀/봇/뉴스/랭킹도 전부 이 목록 기준.
+ */
 export const VISIBLE_GROUPS: Group[] = GROUPS.filter(
-  (g) => g.defaultVisible !== false
+  (g) => g.category === "group" && g.defaultVisible !== false
+);
+
+/** 레거시 티어 그룹 (레거시 필터에서만 노출) */
+export const LEGACY_GROUPS: Group[] = GROUPS.filter(
+  (g) => g.category === "group" && g.tier === "legacy"
 );
 
 export const GROUP_MAP: Record<string, Group> = Object.fromEntries(

@@ -3,7 +3,19 @@ export type SeedStatus =
   | "active_candidate"
   | "rookie_candidate"
   | "legacy_candidate"
-  | "check"
+  | "hidden";
+
+/**
+ * 마켓 티어 — Bias Market 내부 시뮬레이션 분류.
+ * 실제 인기·활동량·매출·팬덤 규모·아티스트 가치를 의미하지 않음.
+ * mega/large/mid/rookie = 기본 노출, legacy = 레거시 필터에서만, hidden = 미노출
+ */
+export type MarketTier =
+  | "mega"
+  | "large"
+  | "mid"
+  | "rookie"
+  | "legacy"
   | "hidden";
 
 export type GroupGender = "boy" | "girl" | "coed";
@@ -24,6 +36,7 @@ export interface Group {
   gender?: GroupGender; // 보이/걸/혼성 (멤버는 소속 그룹 기준)
   generation?: Generation;
   seedStatus?: SeedStatus; // 기본 active_candidate
+  tier?: MarketTier; // 마켓 티어 (내부 시뮬레이션 분류)
   defaultVisible?: boolean; // 메인 마켓 기본 노출 여부 (기본 true)
   sourceNote?: string;
   fandom: string;

@@ -42,6 +42,27 @@ export default function MarketDetailPage() {
     );
   }
 
+  // 멤버 마켓은 현재 준비 중 — 거래 UI를 노출하지 않음 (데이터는 보존)
+  if (group.category === "member") {
+    return (
+      <div className="min-h-screen grid place-items-center p-6">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-8 text-center max-w-sm">
+          <div className="flex justify-center mb-3">
+            <Emblem group={group} size={56} />
+          </div>
+          <p className="text-lg font-bold">{t("detail.memberPrep")}</p>
+          <p className="text-sm text-gray-500 mt-1">{t("detail.memberPrepSub")}</p>
+          <Link
+            href="/"
+            className="inline-block mt-4 px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
+          >
+            {t("detail.back")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const m = state.markets[group.id];
   const price = spotPrice(m);
   const ch24 = m.baseline24h > 0 ? ((price - m.baseline24h) / m.baseline24h) * 100 : 0;
@@ -100,6 +121,11 @@ export default function MarketDetailPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-extrabold">{group.name}</h1>
+                  {group.tier && group.tier !== "hidden" && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 text-[10px] font-bold uppercase tracking-wide">
+                      {group.tier}
+                    </span>
+                  )}
                   <button
                     onClick={() => toggleFavorite(group.id)}
                     aria-label="관심 목록 토글"
@@ -138,7 +164,7 @@ export default function MarketDetailPage() {
             ))}
           </div>
           <p className="mt-3 text-[10px] text-gray-300 leading-relaxed">
-            {t("detail.sharesNote")}
+            {t("detail.sharesNote")} {t("footer.tierNote")}
           </p>
         </div>
 

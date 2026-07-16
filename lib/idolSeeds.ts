@@ -26,7 +26,9 @@ export type IdolSeedRow = [
 const A = "active_candidate" as const;
 const R = "rookie_candidate" as const;
 const L = "legacy_candidate" as const;
-const C = "check" as const;
+// 구 "check" 분류는 폐지 — 최종 노출/티어는 lib/marketTiers.ts의
+// 큐레이션 리스트가 결정하며, 리스트에 없으면 hidden 처리됩니다.
+const C = "hidden" as const;
 
 export const IDOL_SEEDS: IdolSeedRow[] = [
   // ── 보이그룹 ──────────────────────────────────────────────
@@ -40,7 +42,7 @@ export const IDOL_SEEDS: IdolSeedRow[] = [
   ["TVXQ", "boy", C, "동방신기", "Cassiopeia", ["DBSK", "Tohoshinki"]],
   ["SS501", "boy", L, "더블에스오공일", "Triple S"],
   ["SUPER JUNIOR", "boy", C, "슈퍼주니어", "E.L.F.", ["슈주", "SUJU"]],
-  ["BIGBANG", "boy", C, "빅뱅", "VIP"],
+  ["BIGBANG", "boy", A, "빅뱅", "VIP", ["Big Bang"]],
   ["FTISLAND", "boy", C, "에프티아일랜드", "Primadonna"],
   ["SHINee", "boy", A, "샤이니", "SHINee WORLD", ["샤월"]],
   ["2AM", "boy", L, "투에이엠"],
@@ -65,7 +67,8 @@ export const IDOL_SEEDS: IdolSeedRow[] = [
   ["iKON", "boy", C, "아이콘", "iKONIC"],
   ["ASTRO", "boy", C, "아스트로", "AROHA"],
   ["SNUPER", "boy", L, "스누퍼"],
-  ["NCT", "boy", A, "엔시티", "NCTzen", ["NCT 127", "NCT WISH", "엔시티즌"]],
+  ["NCT", "boy", A, "엔시티", "NCTzen", ["NCT WISH", "엔시티즌"]],
+  ["NCT 127", "boy", A, "엔시티 127", "NCTzen", ["엔시티127", "일리칠"]],
   ["KNK", "boy", L, "크나큰", "Tinkerbell"],
   ["SF9", "boy", C, "에스에프나인", "FANTASY"],
   ["PENTAGON", "boy", C, "펜타곤", "Universe"],
