@@ -104,12 +104,21 @@ export default function MarketDetailPage() {
       >
         {/* Back link + language */}
         <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            {t("detail.back")}
-          </Link>
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/" className="flex items-center gap-1.5 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="Bias Market" className="w-6 h-6" />
+              <span className="text-sm font-extrabold tracking-tight hidden sm:inline">
+                Bias Market
+              </span>
+            </Link>
+            <Link
+              href="/"
+              className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors truncate"
+            >
+              {t("detail.back")}
+            </Link>
+          </div>
           <LangSwitcher compact />
         </div>
 

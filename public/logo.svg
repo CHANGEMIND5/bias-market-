@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bm-g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c026d3"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="bm-g2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <!-- 궤도: 오른쪽 뒤 아크 (별 뒤로 지나감) -->
+  <path d="M80 90 C106 79 120 59 113 45 C110 38 103 33 94 32"
+        fill="none" stroke="url(#bm-g2)" stroke-width="8" stroke-linecap="round"/>
+  <!-- 궤도: 왼쪽 앞 아크 -->
+  <path d="M46 90 C27 98 11 95 7 85 C4 77 11 67 23 61"
+        fill="none" stroke="url(#bm-g1)" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="46" cy="97" r="5" fill="#7c3aed"/>
+  <!-- 메인 스파클 -->
+  <path d="M62 6 C66 38 74 46 102 52 C74 58 66 66 62 102 C58 66 50 58 22 52 C50 46 58 38 62 6 Z"
+        fill="url(#bm-g1)"/>
+  <!-- 작은 스파클 -->
+  <path d="M93 16 C94.6 25 97.5 27.9 106 29.5 C97.5 31.1 94.6 34 93 43 C91.4 34 88.5 31.1 80 29.5 C88.5 27.9 91.4 25 93 16 Z"
+        fill="#8b5cf6"/>
+</svg>
