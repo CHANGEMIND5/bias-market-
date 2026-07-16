@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { num, serializeMarket } from "@/lib/economy";
 import { runMarketActivityBot } from "@/lib/marketActivityBot";
 import { ensureMarkets } from "@/lib/markets";
 import { STARTING_BALANCE } from "@/lib/mockData";
@@ -25,12 +26,12 @@ export async function GET() {
     prisma.holding.groupBy({ by: ["groupId"], _sum: { shares: true } }),
   ]);
   const heldMap = new Map(
-    heldAgg.map((h: any) => [h.groupId, h._sum?.shares ?? 0])
+    heldAgg.map((h: any) => [h.groupId, num(h._sum?.shares)])
   );
   const marketMap = Object.fromEntries(
     markets.map((m) => [
       m.groupId,
-      { ...m, userHeldShares: heldMap.get(m.groupId) ?? 0 },
+      { ...serializeMarket(m), userHeldShares: heldMap.get(m.groupId) ?? 0 },
     ])
   );
 
@@ -75,16 +76,21 @@ export async function GET() {
     }
   }
 
-  const [holdings, favorites, trades, rewardState] = await Promise.all([
-    prisma.holding.findMany({ where: { userId } }),
-    prisma.favorite.findMany({ where: { userId } }),
-    prisma.trade.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.userRewardState.findUnique({ where: { userId } }),
-  ]);
+  const [holdings, favorites, trades, rewardState, starter] =
+    await Promise.all([
+      prisma.holding.findMany({ where: { userId } }),
+      prisma.favorite.findMany({ where: { userId } }),
+      prisma.trade.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.userRewardState.findUnique({ where: { userId } }),
+      prisma.starterPortfolio.findUnique({
+        where: { userId },
+        select: { status: true },
+      }),
+    ]);
 
   return NextResponse.json({
     markets: marketMap,
@@ -103,9 +109,13 @@ export async function GET() {
       checkedInToday:
         rewardState?.lastCheckInDate ===
         new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10),
+      starterStatus: starter?.status ?? "NOT_STARTED",
     },
     holdings: Object.fromEntries(
-      holdings.map((h) => [h.groupId, { shares: h.shares, cost: h.cost }])
+      holdings.map((h) => [
+        h.groupId,
+        { shares: num(h.shares), cost: num(h.cost) },
+      ])
     ),
     favorites: favorites.map((f) => f.groupId),
     trades: trades.map((t) => ({

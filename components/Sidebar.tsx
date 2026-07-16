@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import LangSwitcher from "./LangSwitcher";
 import UserAvatar from "./UserAvatar";
@@ -39,6 +40,7 @@ export default function Sidebar({
     level, levelTitle, xpInLevel, xpPerLevel,
     claimDailyReward, canClaimReward, showToast, loggedIn,
     userName, userImage, updateName, updateAvatar, rewardStreak,
+    starterStatus,
   } = useStore();
   const { data: session } = useSession();
   const { t } = useLang();
@@ -293,6 +295,19 @@ export default function Sidebar({
               <p className="mt-1.5 text-[11px] text-gray-400 text-center">
                 🔥 {t("mis.streakNow", { n: rewardStreak })}
               </p>
+            )}
+            {starterStatus !== "COMPLETED" && (
+              <Link
+                href="/starter"
+                className="mt-2 block rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 hover:bg-violet-100 transition-colors"
+              >
+                <p className="text-xs font-bold text-violet-700">
+                  {t("sp.bannerTitle")}
+                </p>
+                <p className="mt-0.5 text-[10px] text-violet-500 leading-snug">
+                  {t("sp.bannerDesc")} →
+                </p>
+              </Link>
             )}
           </>
         )}

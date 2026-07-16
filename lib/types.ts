@@ -59,7 +59,10 @@ export interface MarketState {
   groupId: string;
   fanReserve: number; // x — Fan$ in the pool
   shareReserve: number; // y — Fan Shares in the pool (풀 잔여량)
-  systemShares?: number; // 시스템 봇 보유량 (총량 보존)
+  totalFanShares?: number; // 고정 총량 (1,000,000)
+  systemReserveShares?: number; // 풀 밖 시스템 준비금 (스타터/봇용)
+  starterSharesDistributed?: number;
+  economyVersion?: number;
   userHeldShares?: number; // 전체 유저 보유량 합계 (서버 집계)
   baseline1h: number; // price 1h ago (for % change)
   baseline24h: number;

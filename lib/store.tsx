@@ -59,6 +59,7 @@ interface StoreValue {
   userInfluence: number; // 미션 등으로 획득한 영향력 보너스 (서버 저장)
   rewardStreak: number; // 연속 출석 일수 (서버 저장)
   checkedInToday: boolean;
+  starterStatus: string; // 스타터 포트폴리오: NOT_STARTED | STAGE1_CLAIMED | COMPLETED
   /** 미션 진행용 행동 이벤트 (로그인 시에만 전송, 실패 무시) */
   missionEvent: (type: string, key?: string) => void;
   toasts: ToastMsg[];
@@ -117,6 +118,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [userInfluence, setUserInfluence] = useState(0);
   const [rewardStreak, setRewardStreak] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
+  const [starterStatus, setStarterStatus] = useState("NOT_STARTED");
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [game, setGame] = useState<GameData>(DEFAULT_GAME);
 
@@ -190,6 +192,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setUserInfluence(data.user?.influence ?? 0);
       setRewardStreak(data.user?.streak ?? 0);
       setCheckedInToday(data.user?.checkedInToday === true);
+      setStarterStatus(data.user?.starterStatus ?? "NOT_STARTED");
       setHydrated(true);
     } catch {
       // server unreachable — keep showing current data
@@ -368,7 +371,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value: StoreValue = {
     state, hydrated, loggedIn, isAdmin, userName, userImage, updateName, updateAvatar,
     game, recordShareCopy, markBadgeEarned, refCode, refCount, hasReferrer,
-    userInfluence, rewardStreak, checkedInToday, missionEvent,
+    userInfluence, rewardStreak, checkedInToday, starterStatus, missionEvent,
     toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,

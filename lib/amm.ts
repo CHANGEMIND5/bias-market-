@@ -7,12 +7,15 @@ import { BuyQuote, MarketState, SellQuote } from "./types";
 // This is the single source of truth for all swap math.
 // ─────────────────────────────────────────────────────────────
 
-export function spotPrice(m: MarketState): number {
+/** AMM 계산에 필요한 최소 풀 상태 (서버 Decimal → number 변환값도 허용) */
+export type PoolState = Pick<MarketState, "fanReserve" | "shareReserve">;
+
+export function spotPrice(m: PoolState): number {
   return m.fanReserve / m.shareReserve;
 }
 
 /** Quote a buy: user pays `fanIn` Fan$, receives Fan Shares. */
-export function quoteBuy(m: MarketState, fanIn: number): BuyQuote | null {
+export function quoteBuy(m: PoolState, fanIn: number): BuyQuote | null {
   if (!isFinite(fanIn) || fanIn <= 0) return null;
   const x = m.fanReserve;
   const y = m.shareReserve;
@@ -33,7 +36,7 @@ export function quoteBuy(m: MarketState, fanIn: number): BuyQuote | null {
 }
 
 /** Quote a sell: user gives `sharesIn` Fan Shares, receives Fan$. */
-export function quoteSell(m: MarketState, sharesIn: number): SellQuote | null {
+export function quoteSell(m: PoolState, sharesIn: number): SellQuote | null {
   if (!isFinite(sharesIn) || sharesIn <= 0) return null;
   const x = m.fanReserve;
   const y = m.shareReserve;

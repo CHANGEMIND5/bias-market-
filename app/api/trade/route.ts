@@ -3,6 +3,13 @@ import { getServerSession } from "next-auth";
 import { quoteBuy, quoteSell } from "@/lib/amm";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import {
+  assertSupplyInvariant,
+  num,
+  poolStateOf,
+  r8,
+  serializeMarket,
+} from "@/lib/economy";
 import { ensureMarkets } from "@/lib/markets";
 import { GROUP_MAP, MIN_BUY, MIN_SELL } from "@/lib/mockData";
 import { processFirstTradeReferral } from "@/lib/referral";
@@ -37,56 +44,133 @@ export async function POST(req: Request) {
   ]);
   if (!user) return bad("계정을 찾을 수 없습니다. 다시 로그인해 주세요.", 401);
   if (!market) return bad("마켓을 찾을 수 없습니다.");
+  const pool = poolStateOf(market);
+  const heldShares = num(holding?.shares);
+  const heldCost = num(holding?.cost);
 
-  if (side === "buy") {
-    if (amount < MIN_BUY) return bad(`최소 매수 금액은 ${MIN_BUY} Fan$입니다.`);
-    if (amount > user.balance) return bad("보유 Fan$가 부족합니다.");
-    const q = quoteBuy(market, amount);
-    if (!q) return bad("견적을 계산할 수 없습니다.");
+  try {
+    if (side === "buy") {
+      if (amount < MIN_BUY) return bad(`최소 매수 금액은 ${MIN_BUY} Fan$입니다.`);
+      if (amount > user.balance) return bad("보유 Fan$가 부족합니다.");
+      const q = quoteBuy(pool, amount);
+      if (!q) return bad("견적을 계산할 수 없습니다.");
 
-    const isNewHolder = !holding || holding.shares <= 0;
-    const [updatedUser, updatedMarket, updatedHolding, trade] =
-      await prisma.$transaction([
-        prisma.user.update({
+      const isNewHolder = heldShares <= 0;
+      const result = await prisma.$transaction(async (tx) => {
+        const updatedUser = await tx.user.update({
           where: { id: userId },
           data: { balance: { decrement: amount }, xp: { increment: 25 } },
-        }),
-        prisma.market.update({
+        });
+        const updatedMarket = await tx.market.update({
           where: { groupId },
           data: {
-            fanReserve: q.newFanReserve,
-            shareReserve: q.newShareReserve,
+            fanReserve: r8(q.newFanReserve),
+            shareReserve: r8(q.newShareReserve),
             volume24h: { increment: amount },
             holders: { increment: isNewHolder ? 1 : 0 },
           },
-        }),
-        prisma.holding.upsert({
+        });
+        const updatedHolding = await tx.holding.upsert({
           where: { userId_groupId: { userId, groupId } },
           update: {
-            shares: { increment: q.sharesOut },
-            cost: { increment: amount },
+            shares: r8(heldShares + q.sharesOut),
+            cost: r8(heldCost + amount),
           },
-          create: { userId, groupId, shares: q.sharesOut, cost: amount },
-        }),
-        prisma.trade.create({
+          create: { userId, groupId, shares: r8(q.sharesOut), cost: amount },
+        });
+        const trade = await tx.trade.create({
           data: {
             userId, groupId, side: "buy",
             price: q.execPrice, shares: q.sharesOut, fan: amount, fee: q.fee,
           },
-        }),
-        prisma.pricePoint.create({
+        });
+        await tx.pricePoint.create({
           data: { groupId, price: q.newFanReserve / q.newShareReserve },
-        }),
-      ]);
+        });
+        // 공급 불변식: 풀 + 준비금 + 유저 보유 = 1,000,000 — 위반 시 전체 롤백
+        await assertSupplyInvariant(tx, groupId);
+        return { updatedUser, updatedMarket, updatedHolding, trade };
+      });
 
-    // 첫 거래 초대 보상 (조건 미충족 시 0)
+      let refBonus = 0;
+      try {
+        refBonus = await processFirstTradeReferral(userId);
+      } catch {
+        // 보상 실패가 거래를 막으면 안 됨
+      }
+      try {
+        await recordEvent(userId, "trade_completed", groupId);
+      } catch {
+        // ignore
+      }
+
+      return NextResponse.json({
+        ok: true,
+        balance: result.updatedUser.balance + refBonus,
+        xp: result.updatedUser.xp,
+        market: serializeMarket(result.updatedMarket),
+        holding: {
+          shares: num(result.updatedHolding.shares),
+          cost: num(result.updatedHolding.cost),
+        },
+        trade: { ...serializeTrade(result.trade) },
+        refBonus,
+      });
+    }
+
+    // sell
+    if (amount < MIN_SELL) return bad(`최소 매도 수량은 ${MIN_SELL} Fan Share입니다.`);
+    if (amount > heldShares + 1e-9) return bad("보유 Fan Shares가 부족합니다.");
+    const q = quoteSell(pool, amount);
+    if (!q) return bad("견적을 계산할 수 없습니다.");
+
+    const remaining = heldShares - amount;
+    const soldAll = remaining < 1e-6;
+    const costRemoved = heldShares > 0 ? heldCost * (amount / heldShares) : 0;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { balance: { increment: q.fanOut }, xp: { increment: 25 } },
+      });
+      const updatedMarket = await tx.market.update({
+        where: { groupId },
+        data: {
+          fanReserve: r8(q.newFanReserve),
+          shareReserve: r8(q.newShareReserve),
+          volume24h: { increment: q.fanOutBeforeFee },
+          holders: { decrement: soldAll ? 1 : 0 },
+        },
+      });
+      if (soldAll) {
+        await tx.holding.delete({
+          where: { userId_groupId: { userId, groupId } },
+        });
+      } else {
+        await tx.holding.update({
+          where: { userId_groupId: { userId, groupId } },
+          data: { shares: r8(remaining), cost: r8(heldCost - costRemoved) },
+        });
+      }
+      const trade = await tx.trade.create({
+        data: {
+          userId, groupId, side: "sell",
+          price: q.execPrice, shares: amount, fan: q.fanOut, fee: q.fee,
+        },
+      });
+      await tx.pricePoint.create({
+        data: { groupId, price: q.newFanReserve / q.newShareReserve },
+      });
+      await assertSupplyInvariant(tx, groupId);
+      return { updatedUser, updatedMarket, trade };
+    });
+
     let refBonus = 0;
     try {
       refBonus = await processFirstTradeReferral(userId);
     } catch {
       // 보상 실패가 거래를 막으면 안 됨
     }
-    // 미션 진행 (성공한 유저 거래만 — 시스템 거래는 이 경로에 오지 않음)
     try {
       await recordEvent(userId, "trade_completed", groupId);
     } catch {
@@ -95,84 +179,20 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      balance: updatedUser.balance + refBonus,
-      xp: updatedUser.xp,
-      market: updatedMarket,
-      holding: { shares: updatedHolding.shares, cost: updatedHolding.cost },
-      trade: { ...serializeTrade(trade) },
+      balance: result.updatedUser.balance + refBonus,
+      xp: result.updatedUser.xp,
+      market: serializeMarket(result.updatedMarket),
+      holding: soldAll
+        ? null
+        : { shares: remaining, cost: heldCost - costRemoved },
+      trade: { ...serializeTrade(result.trade) },
       refBonus,
     });
+  } catch (e) {
+    // 불변식 위반 등 — 트랜잭션 전체 롤백됨
+    console.error("[trade] transaction failed:", e);
+    return bad("거래를 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.", 500);
   }
-
-  // sell
-  if (amount < MIN_SELL) return bad(`최소 매도 수량은 ${MIN_SELL} Fan Share입니다.`);
-  const owned = holding?.shares ?? 0;
-  if (amount > owned + 1e-9) return bad("보유 Fan Shares가 부족합니다.");
-  const q = quoteSell(market, amount);
-  if (!q) return bad("견적을 계산할 수 없습니다.");
-
-  const remaining = owned - amount;
-  const soldAll = remaining < 1e-6;
-  const costRemoved = holding ? holding.cost * (amount / owned) : 0;
-
-  const holdingOp = soldAll
-    ? prisma.holding.delete({ where: { userId_groupId: { userId, groupId } } })
-    : prisma.holding.update({
-        where: { userId_groupId: { userId, groupId } },
-        data: { shares: remaining, cost: (holding?.cost ?? 0) - costRemoved },
-      });
-
-  const [updatedUser, updatedMarket, , trade] = await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { balance: { increment: q.fanOut }, xp: { increment: 25 } },
-    }),
-    prisma.market.update({
-      where: { groupId },
-      data: {
-        fanReserve: q.newFanReserve,
-        shareReserve: q.newShareReserve,
-        volume24h: { increment: q.fanOutBeforeFee },
-        holders: { decrement: soldAll ? 1 : 0 },
-      },
-    }),
-    holdingOp,
-    prisma.trade.create({
-      data: {
-        userId, groupId, side: "sell",
-        price: q.execPrice, shares: amount, fan: q.fanOut, fee: q.fee,
-      },
-    }),
-    prisma.pricePoint.create({
-      data: { groupId, price: q.newFanReserve / q.newShareReserve },
-    }),
-  ]);
-
-  // 첫 거래 초대 보상 (조건 미충족 시 0)
-  let refBonus = 0;
-  try {
-    refBonus = await processFirstTradeReferral(userId);
-  } catch {
-    // 보상 실패가 거래를 막으면 안 됨
-  }
-  // 미션 진행 (성공한 유저 거래만)
-  try {
-    await recordEvent(userId, "trade_completed", groupId);
-  } catch {
-    // ignore
-  }
-
-  return NextResponse.json({
-    ok: true,
-    balance: updatedUser.balance + refBonus,
-    xp: updatedUser.xp,
-    market: updatedMarket,
-    holding: soldAll
-      ? null
-      : { shares: remaining, cost: (holding?.cost ?? 0) - costRemoved },
-    trade: { ...serializeTrade(trade) },
-    refBonus,
-  });
 }
 
 function serializeTrade(t: {

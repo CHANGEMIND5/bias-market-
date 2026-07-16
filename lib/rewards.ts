@@ -15,6 +15,7 @@ import {
   pickWeeklyMissions,
   REWARDS,
 } from "./missions";
+import { bumpStarterOnboarding } from "./starter";
 
 /**
  * 멱등 보상 지급 — 같은 sourceKey로는 단 한 번만 지급됨.
@@ -162,6 +163,7 @@ export async function recordEvent(
       const wv = w("w_visit_markets_10");
       if (wv) await bumpMission(userId, wKey, wv, g.id, false);
       await bumpMission(userId, "ONB", ob("ob_market_visit"), null, false);
+      await bumpStarterOnboarding(userId, "market_visit", g.id);
       break;
     }
     case "watchlist_added": {
@@ -182,6 +184,7 @@ export async function recordEvent(
       const wt = w("w_trades_5");
       if (wt) await bumpMission(userId, wKey, wt, null, false);
       await bumpMission(userId, "ONB", ob("ob_first_trade"), null, false);
+      await bumpStarterOnboarding(userId, "trade");
       break;
     }
     case "battle_viewed": {
@@ -190,6 +193,7 @@ export async function recordEvent(
       const wm = w("w_battle_days_4");
       if (wm) await bumpMission(userId, wKey, wm, dateKey, false);
       await bumpMission(userId, "ONB", ob("ob_battle"), null, false);
+      await bumpStarterOnboarding(userId, "battle");
       break;
     }
     case "portfolio_viewed": {
@@ -198,6 +202,7 @@ export async function recordEvent(
       const wm = w("w_portfolio_days_4");
       if (wm) await bumpMission(userId, wKey, wm, dateKey, false);
       await bumpMission(userId, "ONB", ob("ob_portfolio"), null, false);
+      await bumpStarterOnboarding(userId, "portfolio");
       break;
     }
     case "post_opened": {

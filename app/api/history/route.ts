@@ -53,7 +53,9 @@ export async function GET(req: Request) {
     }),
   ]);
 
-  const currentPrice = market ? market.fanReserve / market.shareReserve : 1;
+  const currentPrice = market
+    ? Number(market.fanReserve) / Number(market.shareReserve)
+    : 1;
 
   // No trades ever → demo candles from mock price data (MVP fallback)
   if (trades.length === 0 && !prevTrade) {

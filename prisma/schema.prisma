@@ -31,6 +31,8 @@ model User {
   rewardState    UserRewardState?
   missions       MissionProgress[]
   rewardLedger   RewardLedger[]
+  starterPortfolio StarterPortfolio?
+  starterOnboarding StarterOnboardingProgress?
 }
 
 model UserRewardState {
@@ -62,16 +64,63 @@ model MissionProgress {
 }
 
 model RewardLedger {
-  id        String   @id @default(cuid())
-  userId    String
-  sourceKey String   @unique // 멱등성 키 — 중복 지급 원천 차단
-  fan       Float    @default(0)
-  xp        Int      @default(0)
-  influence Int      @default(0)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  sourceKey      String   @unique // 멱등성 키 — 중복 지급 원천 차단
+  fan            Float    @default(0)
+  xp             Int      @default(0)
+  influence      Int      @default(0)
+  rewardType     String   @default("") // 예: SIGNUP, STARTER_PORTFOLIO_REWARD, DAILY_CHECKIN...
+  marketId       String? // Fan Shares 지급 시 대상 마켓
+  shareAmount    Decimal? @db.Decimal(30, 8) // 지급된 Fan Shares 수량
+  referencePrice Decimal? @db.Decimal(30, 8) // 지급 시 기준 가격
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// ─── 스타터 팬덤 포트폴리오 ───
+model StarterPortfolio {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  status                String    @default("NOT_STARTED") // NOT_STARTED | STAGE1_CLAIMED | COMPLETED
+  selectionConfirmedAt  DateTime?
+  stage1ClaimedAt       DateTime?
+  onboardingCompletedAt DateTime?
+  stage2ClaimedAt       DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allocations           StarterPortfolioAllocation[]
+}
+
+model StarterPortfolioAllocation {
+  id                  String  @id @default(cuid())
+  portfolioId         String
+  marketId            String // groupId
+  role                String // MAIN | SUB
+  referencePrice      Decimal @db.Decimal(30, 8) // 선택 확정 시점 서버 기준가 (양 스테이지 공통)
+  stage1FanValue      Decimal @db.Decimal(30, 8)
+  stage1ShareQuantity Decimal @db.Decimal(30, 8)
+  stage2FanValue      Decimal @db.Decimal(30, 8)
+  stage2ShareQuantity Decimal @db.Decimal(30, 8)
+  stage1Claimed       Boolean @default(false)
+  stage2Claimed       Boolean @default(false)
+  portfolio           StarterPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, marketId])
+}
+
+model StarterOnboardingProgress {
+  userId              String    @id
+  visitedMarkets      String    @default("") // 중복 방지: 방문한 그룹 id CSV
+  portfolioViewed     Boolean   @default(false)
+  firstTradeCompleted Boolean   @default(false)
+  battleViewed        Boolean   @default(false)
+  completedAt         DateTime?
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Report {
@@ -126,10 +175,19 @@ model Comment {
 }
 
 model Market {
-  groupId      String @id
-  fanReserve   Float
-  shareReserve Float
-  systemShares Float  @default(0) // marketActivityBot이 보유한 Fan Shares (총량 보존용)
+  groupId      String  @id
+  // ─── 이코노미 v2 정밀 원장 (DB Decimal이 최종 진실, JS에서는 읽을 때 Number 변환) ───
+  fanReserve   Decimal @db.Decimal(30, 8) // poolFan — AMM 풀의 Fan$ (x)
+  shareReserve Decimal @db.Decimal(30, 8) // poolShares — AMM 풀의 Fan Shares (y)
+  totalFanShares           Decimal @default(1000000) @db.Decimal(30, 8)
+  systemReserveShares      Decimal @default(0) @db.Decimal(30, 8) // 풀 밖 시스템 준비금
+  initialReserveShares     Decimal @default(0) @db.Decimal(30, 8)
+  systemTreasuryFan        Decimal @default(0) @db.Decimal(30, 8) // 시스템 봇 Fan$ 금고
+  starterSharesDistributed Decimal @default(0) @db.Decimal(30, 8)
+  missionSharesDistributed Decimal @default(0) @db.Decimal(30, 8)
+  systemBotNetShares       Decimal @default(0) @db.Decimal(30, 8) // 봇 순매도(+)/순매수(-) 누적
+  initialPrice             Decimal @default(0) @db.Decimal(30, 8)
+  economyVersion           Int     @default(1)
   baseline1h   Float
   baseline24h  Float
   baseline7d   Float
@@ -140,8 +198,8 @@ model Market {
 model Holding {
   userId  String
   groupId String
-  shares  Float
-  cost    Float
+  shares  Decimal @db.Decimal(30, 8)
+  cost    Decimal @db.Decimal(30, 8) // 취득 기준 Fan$ (스타터 보상은 기준가로 산정)
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, groupId])
