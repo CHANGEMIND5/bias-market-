@@ -28,7 +28,8 @@ export default function SharePreview({
   change24h: number;
   onClose: () => void;
 }) {
-  const { state, portfolioValue, game, showToast, recordShareCopy, refCount } = useStore();
+  const { state, portfolioValue, game, showToast, recordShareCopy, refCount, userInfluence } =
+    useStore();
   const { t } = useLang();
   const [type, setType] = useState<CardType>("buy");
 
@@ -56,8 +57,9 @@ export default function SharePreview({
       battleParticipation: new Set(state.trades.map((t) => t.time.slice(0, 10)))
         .size,
       badgeCount: badges.filter((b) => b.unlocked).length,
+      bonus: userInfluence,
     });
-  }, [state, portfolioValue, game, ranking, refCount, t]);
+  }, [state, portfolioValue, game, ranking, refCount, userInfluence, t]);
 
   // 카드 타입별 내용 — 문구 수정은 lib/i18n.tsx의 share.* 키에서
   const card: ShareCardData = useMemo(() => {

@@ -23,10 +23,55 @@ model User {
   holdings       Holding[]
   trades         Trade[]
   favorites      Favorite[]
+  influence      Int        @default(0) // 미션 등으로 획득한 영향력 보너스
   posts          Post[]
   postLikes      PostLike[]
   comments       Comment[]
   reports        Report[]
+  rewardState    UserRewardState?
+  missions       MissionProgress[]
+  rewardLedger   RewardLedger[]
+}
+
+model UserRewardState {
+  userId                  String   @id
+  currentStreak           Int      @default(0)
+  lastCheckInDate         String? // KST YYYY-MM-DD
+  dailyAllClaimedDate     String? // 오늘의 미션 전체 완료 보상 수령일
+  dailyBonusClaimedDate   String? // 일일 완료 보너스 수령일
+  weeklyClaimedKey        String? // 마지막으로 주간 보상을 받은 weekKey
+  onboardingRewardClaimed Boolean  @default(false)
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MissionProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  periodKey   String // "D:2026-07-16" | "W:2026-07-14" | "ONB"
+  missionType String
+  progress    Int      @default(0)
+  target      Int
+  completed   Boolean  @default(false)
+  meta        String? // 중복 방지용 키 목록 (쉼표 구분)
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodKey, missionType])
+  @@index([userId, periodKey])
+}
+
+model RewardLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  sourceKey String   @unique // 멱등성 키 — 중복 지급 원천 차단
+  fan       Float    @default(0)
+  xp        Int      @default(0)
+  influence Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Report {

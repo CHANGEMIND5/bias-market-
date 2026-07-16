@@ -75,7 +75,7 @@ export async function GET() {
     }
   }
 
-  const [holdings, favorites, trades] = await Promise.all([
+  const [holdings, favorites, trades, rewardState] = await Promise.all([
     prisma.holding.findMany({ where: { userId } }),
     prisma.favorite.findMany({ where: { userId } }),
     prisma.trade.findMany({
@@ -83,6 +83,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    prisma.userRewardState.findUnique({ where: { userId } }),
   ]);
 
   return NextResponse.json({
@@ -97,6 +98,11 @@ export async function GET() {
       refCode: user.refCode,
       refCount: user.refCount,
       hasReferrer: !!user.referredBy,
+      influence: user.influence,
+      streak: rewardState?.currentStreak ?? 0,
+      checkedInToday:
+        rewardState?.lastCheckInDate ===
+        new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10),
     },
     holdings: Object.fromEntries(
       holdings.map((h) => [h.groupId, { shares: h.shares, cost: h.cost }])

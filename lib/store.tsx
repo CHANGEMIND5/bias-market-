@@ -37,6 +37,8 @@ export interface TradeResult {
 export interface ClaimResult {
   ok: boolean;
   error?: string;
+  fan?: number; // 지급된 Fan$ (출석 체크 등)
+  streak?: number;
 }
 
 interface StoreValue {
@@ -54,6 +56,11 @@ interface StoreValue {
   refCode: string | null;
   refCount: number;
   hasReferrer: boolean;
+  userInfluence: number; // 미션 등으로 획득한 영향력 보너스 (서버 저장)
+  rewardStreak: number; // 연속 출석 일수 (서버 저장)
+  checkedInToday: boolean;
+  /** 미션 진행용 행동 이벤트 (로그인 시에만 전송, 실패 무시) */
+  missionEvent: (type: string, key?: string) => void;
   toasts: ToastMsg[];
   showToast: (type: ToastMsg["type"], text: string) => void;
   refresh: () => Promise<void>;
@@ -107,6 +114,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [refCode, setRefCode] = useState<string | null>(null);
   const [refCount, setRefCount] = useState(0);
   const [hasReferrer, setHasReferrer] = useState(false);
+  const [userInfluence, setUserInfluence] = useState(0);
+  const [rewardStreak, setRewardStreak] = useState(0);
+  const [checkedInToday, setCheckedInToday] = useState(false);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [game, setGame] = useState<GameData>(DEFAULT_GAME);
 
@@ -177,6 +187,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setRefCode(data.user?.refCode ?? null);
       setRefCount(data.user?.refCount ?? 0);
       setHasReferrer(data.user?.hasReferrer === true);
+      setUserInfluence(data.user?.influence ?? 0);
+      setRewardStreak(data.user?.streak ?? 0);
+      setCheckedInToday(data.user?.checkedInToday === true);
       setHydrated(true);
     } catch {
       // server unreachable — keep showing current data
@@ -271,24 +284,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [loggedIn, showToast, t]
   );
 
-  const canClaimReward = loggedIn && state.lastRewardDate !== todayString();
+  const canClaimReward = loggedIn && !checkedInToday;
 
+  // 일일 출석 체크 (7일 스트릭) — 서버가 검증·지급
   const claimDailyReward = useCallback(async (): Promise<ClaimResult> => {
     if (!loggedIn) return { ok: false, error: t("err.loginReward") };
     try {
-      const data = await sendJSON("/api/reward");
+      const data = await sendJSON("/api/rewards/checkin");
       if (!data.ok) return { ok: false, error: data.error ?? t("err.rewardDone") };
-      setState((s) => ({
-        ...s,
-        balance: data.balance,
-        xp: data.xp,
-        lastRewardDate: data.lastRewardDate,
-      }));
-      return { ok: true };
+      setState((s) => ({ ...s, balance: data.balance }));
+      setRewardStreak(data.streak ?? 0);
+      setCheckedInToday(true);
+      return { ok: true, fan: data.fan, streak: data.streak };
     } catch {
       return { ok: false, error: t("err.network") };
     }
   }, [loggedIn, t]);
+
+  // 미션 진행 이벤트 (fire-and-forget)
+  const missionEvent = useCallback(
+    (type: string, key?: string) => {
+      if (!loggedIn) return;
+      sendJSON("/api/missions/event", { type, key }).catch(() => {});
+    },
+    [loggedIn]
+  );
 
   const updateName = useCallback(
     async (name: string): Promise<ClaimResult> => {
@@ -348,6 +368,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value: StoreValue = {
     state, hydrated, loggedIn, isAdmin, userName, userImage, updateName, updateAvatar,
     game, recordShareCopy, markBadgeEarned, refCode, refCount, hasReferrer,
+    userInfluence, rewardStreak, checkedInToday, missionEvent,
     toasts, showToast, refresh,
     buy, sell, toggleFavorite, claimDailyReward, canClaimReward,
     priceOf, portfolioValue, totalCost, totalPnl, holdingCount,

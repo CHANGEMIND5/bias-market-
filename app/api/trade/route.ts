@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { ensureMarkets } from "@/lib/markets";
 import { GROUP_MAP, MIN_BUY, MIN_SELL } from "@/lib/mockData";
 import { processFirstTradeReferral } from "@/lib/referral";
+import { recordEvent } from "@/lib/rewards";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,12 @@ export async function POST(req: Request) {
     } catch {
       // 보상 실패가 거래를 막으면 안 됨
     }
+    // 미션 진행 (성공한 유저 거래만 — 시스템 거래는 이 경로에 오지 않음)
+    try {
+      await recordEvent(userId, "trade_completed", groupId);
+    } catch {
+      // ignore
+    }
 
     return NextResponse.json({
       ok: true,
@@ -147,6 +154,12 @@ export async function POST(req: Request) {
     refBonus = await processFirstTradeReferral(userId);
   } catch {
     // 보상 실패가 거래를 막으면 안 됨
+  }
+  // 미션 진행 (성공한 유저 거래만)
+  try {
+    await recordEvent(userId, "trade_completed", groupId);
+  } catch {
+    // ignore
   }
 
   return NextResponse.json({

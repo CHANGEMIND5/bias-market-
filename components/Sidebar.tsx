@@ -38,7 +38,7 @@ export default function Sidebar({
     state, portfolioValue, totalCost, totalPnl, holdingCount,
     level, levelTitle, xpInLevel, xpPerLevel,
     claimDailyReward, canClaimReward, showToast, loggedIn,
-    userName, userImage, updateName, updateAvatar,
+    userName, userImage, updateName, updateAvatar, rewardStreak,
   } = useStore();
   const { data: session } = useSession();
   const { t } = useLang();
@@ -265,7 +265,7 @@ export default function Sidebar({
           </button>
         ) : (
           <>
-            {state.lastRewardDate === null && (
+            {rewardStreak === 0 && state.trades.length === 0 && (
               <p className="mt-3 text-[11px] font-semibold text-emerald-600 text-center">
                 {t("side.signupBonus", { n: fmtInt(STARTING_BALANCE) })}
               </p>
@@ -273,7 +273,11 @@ export default function Sidebar({
             <button
               onClick={async () => {
                 const r = await claimDailyReward();
-                if (r.ok) showToast("success", t("mis.claimed", { n: fmtInt(DAILY_REWARD) }));
+                if (r.ok)
+                  showToast(
+                    "success",
+                    `${t("mis.checkinDone", { n: fmtInt(r.fan ?? 0) })} · ${t("mis.streakNow", { n: r.streak ?? 1 })}`
+                  );
                 else showToast("info", trServer(t, r.error, "err.rewardDone"));
               }}
               disabled={!canClaimReward}
@@ -283,10 +287,13 @@ export default function Sidebar({
                   : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
               }`}
             >
-              {canClaimReward
-                ? t("side.claim", { n: fmtInt(DAILY_REWARD) })
-                : t("side.claimed")}
+              {canClaimReward ? t("mis.checkinBtn") : t("mis.checkedIn")}
             </button>
+            {rewardStreak > 0 && (
+              <p className="mt-1.5 text-[11px] text-gray-400 text-center">
+                🔥 {t("mis.streakNow", { n: rewardStreak })}
+              </p>
+            )}
           </>
         )}
       </div>

@@ -19,7 +19,7 @@ import { useStore } from "@/lib/store";
 export default function FanProfileCard() {
   const {
     state, portfolioValue, game, refCode, refCount, hasReferrer,
-    loggedIn, showToast, refresh,
+    loggedIn, showToast, refresh, userInfluence, rewardStreak,
   } = useStore();
   const { t } = useLang();
   const [codeDraft, setCodeDraft] = useState("");
@@ -81,8 +81,12 @@ export default function FanProfileCard() {
   }, [state.holdings, state.markets]);
 
   const badges = useMemo(
-    () => computeBadges({ state, portfolioValue, battleTopGroupId, game, refCount }, t),
-    [state, portfolioValue, battleTopGroupId, game, refCount, t]
+    () =>
+      computeBadges(
+        { state, portfolioValue, battleTopGroupId, game, refCount, serverStreak: rewardStreak },
+        t
+      ),
+    [state, portfolioValue, battleTopGroupId, game, refCount, rewardStreak, t]
   );
   const unlockedBadges = badges.filter((b) => b.unlocked);
 
@@ -101,6 +105,7 @@ export default function FanProfileCard() {
     shareCount: game.shareCopies,
     battleParticipation,
     badgeCount: unlockedBadges.length,
+    bonus: userInfluence,
   });
   const title = influenceTitle(influence, t);
 

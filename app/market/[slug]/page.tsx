@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Emblem from "@/components/Emblem";
@@ -20,9 +20,15 @@ import { useStore } from "@/lib/store";
 export default function MarketDetailPage() {
   const params = useParams<{ slug: string }>();
   const group = resolveSlug(params?.slug ?? "");
-  const { state, hydrated, toggleFavorite } = useStore();
+  const { state, hydrated, toggleFavorite, missionEvent, loggedIn } = useStore();
   const { t, lang } = useLang();
   const [shareOpen, setShareOpen] = useState(false);
+
+  // 미션 진행: 마켓 방문 (서버가 hidden/멤버/중복 방문을 걸러냄)
+  useEffect(() => {
+    if (group && loggedIn) missionEvent("market_viewed", group.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group?.id, loggedIn]);
 
   if (!group) {
     return (

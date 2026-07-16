@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { GROUP_MAP } from "@/lib/mockData";
+import { recordEvent } from "@/lib/rewards";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,12 @@ export async function POST(req: Request) {
     });
   } else {
     await prisma.favorite.create({ data: { userId, groupId } });
+    // 미션 진행 (추가일 때만 — 같은 그룹 재추가는 dedupe로 중복 인정 안 됨)
+    try {
+      await recordEvent(userId, "watchlist_added", groupId);
+    } catch {
+      // ignore
+    }
   }
 
   const favorites = await prisma.favorite.findMany({ where: { userId } });

@@ -31,7 +31,7 @@ export default function BattleCard({
 }: {
   onSelect: (id: string) => void;
 }) {
-  const { state } = useStore();
+  const { state, missionEvent, loggedIn } = useStore();
   const { t } = useLang();
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState<number | null>(null);
@@ -42,6 +42,12 @@ export default function BattleCard({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // 미션 진행: 팬덤 배틀 확인 (서버가 하루 1회만 인정)
+  useEffect(() => {
+    if (loggedIn) missionEvent("battle_viewed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn]);
 
   const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
   const top3 = ranking.slice(0, 3);

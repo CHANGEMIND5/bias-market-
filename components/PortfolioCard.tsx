@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Emblem from "./Emblem";
 import { spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtInt, fmtPct, fmtShares } from "@/lib/format";
@@ -12,8 +13,15 @@ export default function PortfolioCard({
 }: {
   onSelect: (id: string) => void;
 }) {
-  const { state, portfolioValue, totalCost, totalPnl, level } = useStore();
+  const { state, portfolioValue, totalCost, totalPnl, level, missionEvent, loggedIn } =
+    useStore();
   const { t } = useLang();
+
+  // 미션 진행: 포트폴리오 확인 (서버가 하루 1회만 인정)
+  useEffect(() => {
+    if (loggedIn) missionEvent("portfolio_viewed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn]);
   const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   const influence = state.xp * 13 + Math.round(portfolioValue / 10);
 

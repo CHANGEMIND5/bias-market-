@@ -51,7 +51,7 @@ function Avatar({ author }: { author: Author }) {
 }
 
 export default function CommunityView() {
-  const { loggedIn, isAdmin, showToast } = useStore();
+  const { loggedIn, isAdmin, showToast, missionEvent } = useStore();
   const { t } = useLang();
   const [posts, setPosts] = useState<PostItem[] | null>(null);
   const [draft, setDraft] = useState("");
@@ -228,6 +228,8 @@ export default function CommunityView() {
       else {
         next.add(postId);
         if (!comments[postId]) loadComments(postId);
+        // 미션 진행: 게시물 열람 (피드 로딩만으론 인정 안 됨)
+        missionEvent("post_opened", postId);
       }
       return next;
     });

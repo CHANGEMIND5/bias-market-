@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { todayString } from "@/lib/format";
-import { DAILY_REWARD } from "@/lib/mockData";
+import { performCheckin } from "@/lib/rewards";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * POST /api/reward — (구) 일일 보상 엔드포인트.
+ * 이제 출석 체크(/api/rewards/checkin)와 동일하게 동작합니다 (하위 호환).
+ */
 export async function POST() {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
@@ -16,36 +18,10 @@ export async function POST() {
       { status: 401 }
     );
   }
-
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    return NextResponse.json(
-      { ok: false, error: "계정을 찾을 수 없습니다. 다시 로그인해 주세요." },
-      { status: 401 }
-    );
-  }
-
-  const today = todayString();
-  if (user.lastRewardDate === today) {
-    return NextResponse.json({
-      ok: false,
-      error: "오늘의 보상은 이미 받았어요. 내일 다시 오세요!",
-    });
-  }
-
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      balance: { increment: DAILY_REWARD },
-      xp: { increment: 10 },
-      lastRewardDate: today,
-    },
-  });
-
+  const result = await performCheckin(userId);
+  if (!result.ok) return NextResponse.json(result);
   return NextResponse.json({
-    ok: true,
-    balance: updated.balance,
-    xp: updated.xp,
-    lastRewardDate: updated.lastRewardDate,
+    ...result,
+    lastRewardDate: null, // 구 필드 — 신규 클라이언트는 사용하지 않음
   });
 }

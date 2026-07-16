@@ -27,11 +27,13 @@ export function computeBadges(
     battleTopGroupId: string | null;
     game: GameData;
     refCount?: number; // 성공한 친구 초대 수
+    serverStreak?: number; // 서버 저장 연속 출석 (있으면 우선)
   },
   t: Tfn
 ): BadgeStatus[] {
   const { state, portfolioValue, battleTopGroupId, game } = opts;
   const refCount = opts.refCount ?? 0;
+  const streak = Math.max(opts.serverStreak ?? 0, game.streak);
 
   const buys = state.trades.filter((tr) => tr.side === "buy").length;
   const tradeCount = state.trades.length;
@@ -81,8 +83,8 @@ export function computeBadges(
     {
       id: "streak", icon: "🔥",
       name: t("b.streak.name"), desc: t("b.streak.desc"),
-      unlocked: game.streak >= 7,
-      lockedProgress: t("b.streak.prog", { n: Math.min(game.streak, 7) }),
+      unlocked: streak >= 7,
+      lockedProgress: t("b.streak.prog", { n: Math.min(streak, 7) }),
     },
     {
       id: "champion", icon: "👑",
@@ -118,13 +120,15 @@ export function fanInfluence(opts: {
   shareCount: number;
   battleParticipation: number;
   badgeCount: number;
+  bonus?: number; // 미션 등으로 획득한 영향력 (서버 저장)
 }): number {
   return Math.round(
     opts.portfolioValue * 0.01 +
       opts.tradeCount * 10 +
       opts.shareCount * 25 +
       opts.battleParticipation * 50 +
-      opts.badgeCount * 100
+      opts.badgeCount * 100 +
+      (opts.bonus ?? 0)
   );
 }
 
