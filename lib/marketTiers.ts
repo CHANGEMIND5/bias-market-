@@ -50,6 +50,7 @@ export const LEGACY_TIER = [
   "Seo Taiji and Boys", "H.O.T.", "SECHSKIES", "NRG", "SHINHWA", "god",
   "SS501", "Wanna One", "X1", "RAINZ", "JBJ", "TO1", "TFN", "MIRAE",
   "TAN", "NU'EST", "B.A.P", "Baby V.O.X", "S.E.S.", "Fin.K.L",
+  "Girls' Generation",
   "Wonder Girls", "2NE1", "4minute", "SISTAR", "GFRIEND", "CLC",
   "APRIL", "DIA", "I.O.I", "gugudan", "MOMOLAND", "PRISTIN", "IZ*ONE",
   "Cherry Bullet", "ANS", "HINAPIA", "HOT ISSUE", "NATURE", "Weki Meki",
