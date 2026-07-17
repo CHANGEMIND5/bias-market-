@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth";
 import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-
-export const dynamic = "force-dynamic";
-
-const MAX_COMMENT_LENGTH = 300;
+import { checkCommentRateLimit, MAX_COMMENT_LENGTH } from "@/lib/lounge";
 
 /** GET /api/posts/[postId]/comments — 댓글 목록 */
 export async function GET(
@@ -57,6 +54,10 @@ export async function POST(
   if (!post) {
     return NextResponse.json({ ok: false, error: "글을 찾을 수 없습니다." }, { status: 404 });
   }
+  const admin = isAdminEmail(session?.user?.email);
+  if (post.isLocked && !admin) {
+    return NextResponse.json({ ok: false, error: "댓글이 잠긴 글이에요." }, { status: 403 });
+  }
 
   const data = await req.json().catch(() => null);
   const body = typeof data?.body === "string" ? data.body.trim() : "";
@@ -68,6 +69,19 @@ export async function POST(
       { ok: false, error: `댓글은 최대 ${MAX_COMMENT_LENGTH}자까지 쓸 수 있어요.` },
       { status: 400 }
     );
+  }
+  // 프로필 이름 필수 + 레이트리밋 (서버 판정)
+  const me = await prisma.user.findUnique({
+    where: { id: userId }, select: { name: true },
+  });
+  if (!me?.name || me.name.trim().length === 0) {
+    return NextResponse.json(
+      { ok: false, error: "프로필 이름을 먼저 설정해 주세요." }, { status: 403 }
+    );
+  }
+  const rl = await checkCommentRateLimit(userId);
+  if (!rl.ok) {
+    return NextResponse.json({ ok: false, error: rl.error }, { status: 429 });
   }
 
   const comment = await prisma.comment.create({

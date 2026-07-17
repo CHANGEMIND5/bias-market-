@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Emblem from "@/components/Emblem";
+import MarketTabs from "@/components/MarketTabs";
 import PriceChart from "@/components/PriceChart";
 import RecentTrades from "@/components/RecentTrades";
 import SharePreview from "@/components/SharePreview";
@@ -13,6 +14,7 @@ import { battleRanking } from "@/lib/battle";
 import LangSwitcher from "@/components/LangSwitcher";
 import { changeColor, fmt, fmtCompact, fmtInt, fmtPct } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
+import { loungeEligible } from "@/lib/loungeShared";
 import { DISCLAIMER_EN, GROUP_MAP, TOTAL_SHARES } from "@/lib/mockData";
 import { resolveSlug } from "@/lib/slug";
 import { useStore } from "@/lib/store";
@@ -126,6 +128,11 @@ export default function MarketDetailPage() {
           </div>
           <LangSwitcher compact />
         </div>
+
+        {/* 마켓 / 팬덤 라운지 탭 (라운지 가능 그룹만) */}
+        {loungeEligible(group) && (
+          <MarketTabs slug={params?.slug ?? group.id} active="market" />
+        )}
 
         {/* Header */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-5">

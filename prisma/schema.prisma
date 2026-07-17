@@ -124,32 +124,84 @@ model StarterOnboardingProgress {
 }
 
 model Report {
-  id         String   @id @default(cuid())
-  reporterId String
-  postId     String?
-  commentId  String?
-  reason     String?
-  createdAt  DateTime @default(now())
-  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  reporterId   String
+  postId       String?
+  commentId    String?
+  reason       String? // harassment | hate | spam | misinfo | privacy | manipulation | inappropriate | other
+  details      String?
+  status       String   @default("OPEN") // OPEN | REVIEWED | DISMISSED
+  reviewedAt   DateTime?
+  reviewedById String?
+  createdAt    DateTime @default(now())
+  reporter     User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  post         Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment      Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([reporterId, postId])
   @@unique([reporterId, commentId])
+  @@index([status, createdAt])
 }
 
 model Post {
   id        String     @id @default(cuid())
   userId    String
   body      String
-  isNotice  Boolean    @default(false)
+  title     String?
+  isNotice  Boolean    @default(false) // 전체 커뮤니티 공지 (기존 호환)
+  // ─── 팬덤 라운지 ───
+  scope            String   @default("GLOBAL") // GLOBAL | MARKET
+  marketId         String? // scope=MARKET일 때 대상 groupId
+  postType         String   @default("GENERAL") // GENERAL | MARKET_TALK | BATTLE | POLL
+  isPinned         Boolean  @default(false) // 라운지 상단 고정
+  isLocked         Boolean  @default(false) // 댓글 잠금
+  moderationStatus String   @default("VISIBLE") // VISIBLE | UNDER_REVIEW | HIDDEN
   createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now()) @updatedAt
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes     PostLike[]
   comments  Comment[]
   reports   Report[]
+  poll      CommunityPoll?
 
   @@index([createdAt])
+  @@index([scope, marketId, createdAt])
+  @@index([postType])
+}
+
+// ─── 팬덤 라운지 투표 ───
+model CommunityPoll {
+  id       String                @id @default(cuid())
+  postId   String                @unique
+  closesAt DateTime
+  closedAt DateTime?
+  post     Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options  CommunityPollOption[]
+  votes    CommunityPollVote[]
+}
+
+model CommunityPollOption {
+  id        String              @id @default(cuid())
+  pollId    String
+  text      String
+  sortOrder Int                 @default(0)
+  poll      CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     CommunityPollVote[]
+
+  @@index([pollId])
+}
+
+model CommunityPollVote {
+  id        String              @id @default(cuid())
+  pollId    String
+  optionId  String
+  userId    String
+  createdAt DateTime            @default(now())
+  poll      CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option    CommunityPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId]) // 유저당 1표 (변경 시 optionId 갱신)
+  @@index([pollId])
 }
 
 model PostLike {
@@ -188,6 +240,10 @@ model Market {
   systemBotNetShares       Decimal @default(0) @db.Decimal(30, 8) // 봇 순매도(+)/순매수(-) 누적
   initialPrice             Decimal @default(0) @db.Decimal(30, 8)
   economyVersion           Int     @default(1)
+  // ─── 팬덤 라운지 상태 (AUTO=티어 기반 자동 판정) ───
+  loungeStatus           String    @default("AUTO") // AUTO | ACTIVE | LOCKED | DISABLED
+  loungeActivatedAt      DateTime?
+  loungeActivationReason String? // DEFAULT_TIER | COMMUNITY_THRESHOLD | ADMIN
   baseline1h   Float
   baseline24h  Float
   baseline7d   Float
