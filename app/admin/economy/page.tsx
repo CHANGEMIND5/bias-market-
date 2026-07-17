@@ -4,7 +4,7 @@
 // 관리자 전용 — 이코노미/준비금 모니터 (ADMIN_EMAILS 계정만 접근 가능)
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import AdminNav from "@/components/AdminNav";
 import { fmt, fmtCompact, fmtInt } from "@/lib/format";
 
 type Row = {
@@ -49,10 +49,8 @@ export default function AdminEconomyPage() {
 
   return (
     <div className="min-h-screen p-4 lg:p-6 max-w-[1300px] mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">🛠 이코노미 모니터 (관리자)</h1>
-        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">← 홈</Link>
-      </div>
+      <AdminNav />
+      <h1 className="text-xl font-bold mb-4">🛠 이코노미 모니터</h1>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
       {!rows && !error && <p className="text-sm text-gray-400">불러오는 중...</p>}
