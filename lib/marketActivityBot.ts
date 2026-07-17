@@ -29,15 +29,27 @@ import {
 import { MARKET_TIER_CONFIG } from "./marketTiers";
 import { VISIBLE_GROUPS } from "./mockData";
 
-const INTERVAL_MS = 30 * 60_000; // 30분
-const MAX_CATCHUP = 3; // 밀린 라운드 최대 생성 수
 const MAX_IMPACT_PCT = 0.5; // 시스템 거래 1건당 가격 영향 상한 (%)
 const MIN_FAN = 50;
 const MAX_FAN = 1500;
 const BUY_PROBABILITY = 0.5; // 방향 편향 없음 (지속적 단방향 조작 방지)
-const MAX_DAILY_TRADES_PER_SIDE = 30; // 마켓당 일일 매수/매도 건수 상한
+
+/**
+ * 봇 활동 강도 — 환경변수 BOT_ACTIVE_MODE=true 면 베타용 "활발" 모드.
+ * 재배포 없이 Vercel 환경변수만 켜고 끄면 즉시 전환됩니다.
+ *   기본:   30분 주기, 라운드당 2~5개, 일일 방향별 30건
+ *   활발:   10분 주기, 라운드당 6~8개, 일일 방향별 80건
+ * 가격 영향 상한(0.5%)은 두 모드 모두 동일 — 급변 방지.
+ */
+function botConfig() {
+  const active = process.env.BOT_ACTIVE_MODE === "true";
+  return active
+    ? { intervalMs: 10 * 60_000, maxCatchup: 6, minMarkets: 6, maxMarkets: 8, dailyPerSide: 80 }
+    : { intervalMs: 30 * 60_000, maxCatchup: 3, minMarkets: 2, maxMarkets: 5, dailyPerSide: 30 };
+}
 
 export async function runMarketActivityBot(): Promise<void> {
+  const cfg = botConfig();
   const last = await prisma.trade.findFirst({
     where: { isSystem: true },
     orderBy: { createdAt: "desc" },
@@ -49,15 +61,15 @@ export async function runMarketActivityBot(): Promise<void> {
   if (!last) {
     rounds = 1; // 첫 실행
   } else {
-    rounds = Math.floor((now - last.createdAt.getTime()) / INTERVAL_MS);
+    rounds = Math.floor((now - last.createdAt.getTime()) / cfg.intervalMs);
     if (rounds <= 0) return;
-    rounds = Math.min(rounds, MAX_CATCHUP);
+    rounds = Math.min(rounds, cfg.maxCatchup);
   }
 
   for (let i = 0; i < rounds; i++) {
     // 밀린 라운드는 과거 시각으로 기록해 차트가 자연스럽게 채워지게 함
-    const roundAt = now - (rounds - 1 - i) * INTERVAL_MS;
-    await runOneRound(roundAt);
+    const roundAt = now - (rounds - 1 - i) * cfg.intervalMs;
+    await runOneRound(roundAt, cfg);
   }
 }
 
@@ -68,8 +80,11 @@ function kstDayStart(): Date {
   return new Date(kst.getTime() - 9 * 3600_000);
 }
 
-async function runOneRound(roundAtMs: number): Promise<void> {
-  // 메인 노출 그룹(mega/large/mid/rookie)에서만 무작위 2~5개 선택.
+async function runOneRound(
+  roundAtMs: number,
+  cfg: ReturnType<typeof botConfig>
+): Promise<void> {
+  // 메인 노출 그룹(mega/large/mid/rookie)에서만 무작위 선택.
   // 티어별 botActivityWeight 가중치 적용 (멤버·hidden·legacy 절대 제외)
   const weighted: string[] = [];
   for (const g of VISIBLE_GROUPS) {
@@ -77,7 +92,8 @@ async function runOneRound(roundAtMs: number): Promise<void> {
     const copies = Math.max(0, Math.round(w * 5));
     for (let i = 0; i < copies; i++) weighted.push(g.id);
   }
-  const count = 2 + Math.floor(Math.random() * 4);
+  const span = cfg.maxMarkets - cfg.minMarkets + 1;
+  const count = cfg.minMarkets + Math.floor(Math.random() * span);
   const ids: string[] = [];
   const shuffled = weighted.sort(() => Math.random() - 0.5);
   for (const id of shuffled) {
@@ -122,7 +138,7 @@ async function runOneRound(roundAtMs: number): Promise<void> {
           createdAt: { gte: dayStart },
         },
       });
-      if (todayCount >= MAX_DAILY_TRADES_PER_SIDE) continue;
+      if (todayCount >= cfg.dailyPerSide) continue;
 
       if (isBuy) {
         // 매수: 금고 Fan$ 한도 내, 가격 영향 0.5% 이하
