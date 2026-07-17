@@ -226,6 +226,8 @@ const ko = {
   "share.weeklyLine2": "배틀 점수 {pts} pts · 24h {pct}",
   // 푸터
   "footer.privacy": "개인정보처리방침",
+  "footer.terms": "이용약관",
+  "footer.feedback": "버그·피드백",
   "disclaimer":
     "Bias Market은 비공식 팬메이드 K-pop 팬덤 배틀 시뮬레이터입니다. Fan$와 Fan Shares는 실제 금전적 가치가 없으며, 출금·판매·양도·교환할 수 없습니다. 본 서비스는 어떠한 아티스트, 소속사, 레이블, 엔터테인먼트 회사와도 제휴·후원·공식 관계가 없습니다.",
   // 커뮤니티
@@ -740,6 +742,8 @@ const en: Dict = {
   "share.weeklyLine1": "{name} at #{rank} · {n} holders",
   "share.weeklyLine2": "Battle score {pts} pts · 24h {pct}",
   "footer.privacy": "Privacy Policy",
+  "footer.terms": "Terms of Service",
+  "footer.feedback": "Bug & Feedback",
   "disclaimer":
     "Bias Market is an unofficial fan-made K-pop fandom battle simulator. Fan$ and Fan Shares have no real-world value and cannot be withdrawn, sold, transferred, or exchanged. This service is not affiliated with, endorsed by, sponsored by, or officially connected to any artist, agency, label, or entertainment company.",
   "comm.subtitle": "Stories from fandom traders — flex your bias, share strategies, declare battle.",
@@ -1238,6 +1242,8 @@ const es: Dict = {
   "share.weeklyLine1": "{name} en #{rank} · {n} holders",
   "share.weeklyLine2": "Puntuación {pts} pts · 24h {pct}",
   "footer.privacy": "Política de privacidad",
+  "footer.terms": "Términos de servicio",
+  "footer.feedback": "Errores y sugerencias",
   "disclaimer":
     "Bias Market es un simulador de batallas de fandoms K-pop no oficial hecho por fans. Fan$ y Fan Shares no tienen valor real y no pueden retirarse, venderse, transferirse ni canjearse. Este servicio no está afiliado, respaldado ni patrocinado por ningún artista, agencia, sello o empresa de entretenimiento.",
   "comm.subtitle": "Historias de fan traders — presume a tu bias, comparte estrategias, declara batalla.",

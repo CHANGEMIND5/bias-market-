@@ -74,10 +74,19 @@ export default function Page() {
             <p className="mt-1.5">{DISCLAIMER_EN}</p>
             <p className="mt-1.5">{t("footer.namesNote")}</p>
             <p className="mt-1.5">{t("footer.tierNote")}</p>
-            <p className="mt-2">
+            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               <a href="/privacy" className="underline hover:text-gray-600">
                 {t("footer.privacy")}
               </a>
+              <a href="/terms" className="underline hover:text-gray-600">
+                {t("footer.terms")}
+              </a>
+              <button
+                onClick={() => setView("community")}
+                className="underline hover:text-gray-600"
+              >
+                {t("footer.feedback")}
+              </button>
             </p>
           </footer>
         </main>

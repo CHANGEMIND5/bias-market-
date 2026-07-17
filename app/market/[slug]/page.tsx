@@ -254,9 +254,12 @@ export default function MarketDetailPage() {
           <p>{t("disclaimer")}</p>
           <p className="mt-1.5">{DISCLAIMER_EN}</p>
           <p className="mt-1.5">{t("footer.namesNote")}</p>
-          <p className="mt-2">
+          <p className="mt-2 flex flex-wrap gap-x-3">
             <Link href="/privacy" className="underline hover:text-gray-600">
               {t("footer.privacy")}
+            </Link>
+            <Link href="/terms" className="underline hover:text-gray-600">
+              {t("footer.terms")}
             </Link>
           </p>
         </footer>
