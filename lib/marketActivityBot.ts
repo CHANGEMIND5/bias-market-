@@ -16,9 +16,16 @@
 //   - hidden/멤버/제외/legacy 마켓 절대 제외 (VISIBLE_GROUPS만)
 //   - isSystem: true 로 명확히 표시, 유저 미션/영향력에 절대 미반영
 // ─────────────────────────────────────────────────────────────
+import { Prisma } from "@prisma/client";
 import { quoteBuy, quoteSell } from "./amm";
 import { prisma } from "./db";
-import { ECONOMY_VERSION, num, poolStateOf, r8 } from "./economy";
+import {
+  assertSupplyInvariant,
+  ECONOMY_VERSION,
+  num,
+  poolStateOf,
+  r8,
+} from "./economy";
 import { MARKET_TIER_CONFIG } from "./marketTiers";
 import { VISIBLE_GROUPS } from "./mockData";
 
@@ -128,34 +135,42 @@ async function runOneRound(roundAtMs: number): Promise<void> {
           q = quoteBuy(pool, amount);
         }
         if (!q || q.priceImpact > MAX_IMPACT_PCT || amount < 1) continue;
+        const qb = q;
 
-        await prisma.$transaction([
-          prisma.market.update({
-            where: { groupId },
-            data: {
-              fanReserve: r8(q.newFanReserve),
-              shareReserve: r8(q.newShareReserve),
-              systemReserveShares: r8(reserve + q.sharesOut), // 풀 → 준비금 복귀
-              systemTreasuryFan: r8(treasury - amount), // 금고에서 지불
-              systemBotNetShares: { decrement: r8(q.sharesOut) },
-              volume24h: { increment: amount },
-            },
-          }),
-          prisma.trade.create({
-            data: {
-              groupId, side: "buy",
-              price: q.execPrice, shares: q.sharesOut, fan: amount, fee: q.fee,
-              isSystem: true, createdAt: at,
-            },
-          }),
-          prisma.pricePoint.create({
-            data: {
-              groupId,
-              price: q.newFanReserve / q.newShareReserve,
-              createdAt: at,
-            },
-          }),
-        ]);
+        // Serializable + 조건부/원자적 갱신 — 유저 거래·스타터 지급과
+        // 동시에 실행돼도 준비금/금고를 덮어쓰지 않음 (충돌 시 이번 라운드 스킵)
+        await prisma.$transaction(
+          async (tx) => {
+            const res = await tx.market.updateMany({
+              where: { groupId, systemTreasuryFan: { gte: amount } },
+              data: {
+                fanReserve: r8(qb.newFanReserve),
+                shareReserve: r8(qb.newShareReserve),
+                systemReserveShares: { increment: r8(qb.sharesOut) }, // 풀 → 준비금 복귀
+                systemTreasuryFan: { decrement: amount }, // 금고에서 지불
+                systemBotNetShares: { decrement: r8(qb.sharesOut) },
+                volume24h: { increment: amount },
+              },
+            });
+            if (res.count === 0) throw new Error("treasury changed — skip");
+            await tx.trade.create({
+              data: {
+                groupId, side: "buy",
+                price: qb.execPrice, shares: qb.sharesOut, fan: amount, fee: qb.fee,
+                isSystem: true, createdAt: at,
+              },
+            });
+            await tx.pricePoint.create({
+              data: {
+                groupId,
+                price: qb.newFanReserve / qb.newShareReserve,
+                createdAt: at,
+              },
+            });
+            await assertSupplyInvariant(tx, groupId);
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+        );
       } else {
         // 매도: 준비금 한도 내에서만 (발행 없음), 가격 영향 0.5% 이하
         let shares = (MIN_FAN + Math.random() * (MAX_FAN - MIN_FAN)) / price;
@@ -167,34 +182,41 @@ async function runOneRound(roundAtMs: number): Promise<void> {
           q = quoteSell(pool, shares);
         }
         if (!q || q.priceImpact > MAX_IMPACT_PCT || shares <= 0) continue;
+        const qs = q;
+        const sellShares = r8(shares);
 
-        await prisma.$transaction([
-          prisma.market.update({
-            where: { groupId },
-            data: {
-              fanReserve: r8(q.newFanReserve),
-              shareReserve: r8(q.newShareReserve),
-              systemReserveShares: r8(reserve - shares), // 준비금 → 풀
-              systemTreasuryFan: r8(treasury + q.fanOut), // 받은 Fan$ 금고 적립
-              systemBotNetShares: { increment: r8(shares) },
-              volume24h: { increment: q.fanOutBeforeFee },
-            },
-          }),
-          prisma.trade.create({
-            data: {
-              groupId, side: "sell",
-              price: q.execPrice, shares, fan: q.fanOut, fee: q.fee,
-              isSystem: true, createdAt: at,
-            },
-          }),
-          prisma.pricePoint.create({
-            data: {
-              groupId,
-              price: q.newFanReserve / q.newShareReserve,
-              createdAt: at,
-            },
-          }),
-        ]);
+        await prisma.$transaction(
+          async (tx) => {
+            const res = await tx.market.updateMany({
+              where: { groupId, systemReserveShares: { gte: sellShares } },
+              data: {
+                fanReserve: r8(qs.newFanReserve),
+                shareReserve: r8(qs.newShareReserve),
+                systemReserveShares: { decrement: sellShares }, // 준비금 → 풀
+                systemTreasuryFan: { increment: r8(qs.fanOut) }, // 받은 Fan$ 금고 적립
+                systemBotNetShares: { increment: sellShares },
+                volume24h: { increment: qs.fanOutBeforeFee },
+              },
+            });
+            if (res.count === 0) throw new Error("reserve changed — skip");
+            await tx.trade.create({
+              data: {
+                groupId, side: "sell",
+                price: qs.execPrice, shares: sellShares, fan: qs.fanOut, fee: qs.fee,
+                isSystem: true, createdAt: at,
+              },
+            });
+            await tx.pricePoint.create({
+              data: {
+                groupId,
+                price: qs.newFanReserve / qs.newShareReserve,
+                createdAt: at,
+              },
+            });
+            await assertSupplyInvariant(tx, groupId);
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+        );
       }
     } catch {
       // 한 종목 실패해도 나머지는 계속

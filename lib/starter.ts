@@ -172,34 +172,35 @@ async function transferFromReserve(
   refPrice: number,
   stage: 1 | 2
 ): Promise<void> {
-  const m = await tx.market.findUnique({ where: { groupId } });
-  const reserve = num(m?.systemReserveShares);
-  if (!m || reserve < qty - 1e-6) {
-    console.error(
-      `[ADMIN-ALERT][starter] reserve exhausted during transfer: market=${groupId}`
-    );
-    throw new Error(`insufficient reserve: ${groupId}`);
-  }
   const holding = await tx.holding.findUnique({
     where: { userId_groupId: { userId, groupId } },
   });
   const isNew = !holding || num(holding.shares) <= 0;
 
-  await tx.market.update({
-    where: { groupId },
+  // 조건부 + 원자적 감소 — 봇/다른 지급과 동시에 실행돼도
+  // 준비금이 충분한 경우에만 성공하고, 절대 덮어쓰지 않음
+  const res = await tx.market.updateMany({
+    where: { groupId, systemReserveShares: { gte: qty } },
     data: {
-      systemReserveShares: r8(reserve - qty),
+      systemReserveShares: { decrement: qty },
       starterSharesDistributed: { increment: qty },
       holders: { increment: isNew ? 1 : 0 },
       // fanReserve/shareReserve/volume24h 절대 변경 없음 — 가격 영향 0
     },
   });
+  if (res.count === 0) {
+    console.error(
+      `[ADMIN-ALERT][starter] reserve exhausted during transfer: market=${groupId}`
+    );
+    throw new Error(`insufficient reserve: ${groupId}`);
+  }
   await tx.holding.upsert({
     where: { userId_groupId: { userId, groupId } },
     update: {
-      shares: r8(num(holding?.shares) + qty),
+      // 원자적 증가 — 동시 거래와 충돌해도 수량이 유실되지 않음
+      shares: { increment: qty },
       // 취득 원가: 저장된 기준가 × 수량 (0원 취득 아님 → 수익률 왜곡 방지)
-      cost: r8(num(holding?.cost) + fanValue),
+      cost: { increment: fanValue },
     },
     create: { userId, groupId, shares: qty, cost: fanValue },
   });
