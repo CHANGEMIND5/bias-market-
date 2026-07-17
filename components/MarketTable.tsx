@@ -111,11 +111,8 @@ export default function MarketTable({
       }
     }
 
-    // 순위는 "현재 보고 있는 목록(필터/검색 결과)" 안에서의 팬덤 가치 기준
-    // — 신인 탭이면 신인들끼리 1위부터, 레거시 탭이면 레거시끼리
-    const byCap = [...list].sort((a, b) => b.marketCap - a.marketCap);
-    const rankMap = new Map(byCap.map((r, i) => [r.group.id, i + 1]));
-    return filtered.map((r) => ({ ...r, rank: rankMap.get(r.group.id) ?? 0 }));
+    // # 번호는 현재 보이는 줄 순서 그대로 1, 2, 3… (선택한 정렬 기준을 따라감)
+    return filtered.map((r, i) => ({ ...r, rank: i + 1 }));
   }, [state.markets, state.favorites, filter, catFilter, searchQuery, showFavs, favoritesOnly]);
 
   const visible = expanded ? rows : rows.slice(0, 10);
