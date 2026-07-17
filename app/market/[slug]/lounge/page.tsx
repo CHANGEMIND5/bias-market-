@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import LangSwitcher from "@/components/LangSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import LoungeView from "@/components/LoungeView";
 import MarketTabs from "@/components/MarketTabs";
 import { useLang } from "@/lib/i18n";
@@ -42,7 +43,10 @@ export default function LoungePage() {
               Bias Market
             </span>
           </Link>
-          <LangSwitcher compact />
+          <div className="flex items-center gap-2">
+            <LangSwitcher compact />
+            <ThemeToggle />
+          </div>
         </div>
 
         <MarketTabs slug={slug} active="lounge" />

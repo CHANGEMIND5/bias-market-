@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import LangSwitcher from "./LangSwitcher";
+import ThemeToggle from "./ThemeToggle";
 import UserAvatar from "./UserAvatar";
 import { AVATAR_PRESETS } from "@/lib/avatars";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
@@ -93,8 +94,9 @@ export default function Sidebar({
           </span>
         </h1>
         <p className="text-xs text-gray-500 mt-0.5">{t("app.subtitle")}</p>
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-2">
           <LangSwitcher compact />
+          <ThemeToggle />
         </div>
       </div>
 

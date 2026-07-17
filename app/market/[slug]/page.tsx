@@ -12,6 +12,7 @@ import TradePanel from "@/components/TradePanel";
 import { spotPrice } from "@/lib/amm";
 import { battleRanking } from "@/lib/battle";
 import LangSwitcher from "@/components/LangSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import { changeColor, fmt, fmtCompact, fmtInt, fmtPct } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
 import { loungeEligible } from "@/lib/loungeShared";
@@ -126,7 +127,10 @@ export default function MarketDetailPage() {
               {t("detail.back")}
             </Link>
           </div>
-          <LangSwitcher compact />
+          <div className="flex items-center gap-2">
+            <LangSwitcher compact />
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* 마켓 / 팬덤 라운지 탭 (라운지 가능 그룹만) */}

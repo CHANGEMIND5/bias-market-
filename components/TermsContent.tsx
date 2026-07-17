@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import LangSwitcher from "./LangSwitcher";
+import ThemeToggle from "./ThemeToggle";
 import { Lang, useLang } from "@/lib/i18n";
 
 // 이용약관 3개 언어 본문 — 수정은 이 파일에서
@@ -211,7 +212,10 @@ export default function TermsContent({ contact }: { contact: string }) {
           <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">
             {c.back}
           </Link>
-          <LangSwitcher compact />
+          <div className="flex items-center gap-2">
+            <LangSwitcher compact />
+            <ThemeToggle />
+          </div>
         </div>
 
         <div className="mt-4 bg-white rounded-2xl border border-gray-200 shadow-card p-6 lg:p-8">

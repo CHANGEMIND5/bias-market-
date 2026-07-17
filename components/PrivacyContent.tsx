@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import LangSwitcher from "./LangSwitcher";
+import ThemeToggle from "./ThemeToggle";
 import { Lang, useLang } from "@/lib/i18n";
 
 // 개인정보처리방침 3개 언어 본문 — 수정은 이 파일에서
@@ -214,7 +215,10 @@ export default function PrivacyContent({ contact }: { contact: string }) {
           >
             {c.back}
           </Link>
-          <LangSwitcher compact />
+          <div className="flex items-center gap-2">
+            <LangSwitcher compact />
+            <ThemeToggle />
+          </div>
         </div>
 
         <div className="mt-4 bg-white rounded-2xl border border-gray-200 shadow-card p-6 lg:p-8">

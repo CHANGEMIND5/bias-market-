@@ -20,6 +20,55 @@ body {
   background: transparent;
 }
 
+/* ───────────────────────────────────────────────────────────
+   다크 모드 — 중립색(흰색/회색) 계열 유틸리티를 .dark에서 일괄 리맵.
+   강조색(violet/emerald/rose/amber 등)은 다크에서도 잘 보여 그대로 둠.
+   개별 컴포넌트를 고치지 않고 여기서 한 번에 처리합니다.
+   색을 조정하고 싶으면 이 블록의 값만 바꾸면 돼요.
+   ─────────────────────────────────────────────────────────── */
+.dark body {
+  background-color: #16171b;
+  color: #f2f3f5;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #3a3d45;
+}
+
+/* 배경 */
+.dark .bg-white { background-color: #1e1f25; }
+.dark .bg-gray-50 { background-color: #24262d; }
+.dark .bg-gray-100 { background-color: #2b2d35; }
+.dark .bg-gray-200 { background-color: #33353d; }
+.dark .bg-gray-900 { background-color: #eef0f3; color: #16171b; }
+
+/* 글자색 */
+.dark .text-gray-900 { color: #f2f3f5; }
+.dark .text-gray-800 { color: #e5e7eb; }
+.dark .text-gray-700 { color: #d7d9de; }
+.dark .text-gray-600 { color: #c2c5cc; }
+.dark .text-gray-500 { color: #9aa0a8; }
+.dark .text-gray-400 { color: #757b85; }
+.dark .text-gray-300 { color: #565b64; }
+
+/* 테두리 */
+.dark .border-gray-200 { border-color: #2f313a; }
+.dark .border-gray-100 { border-color: #262832; }
+.dark .border-gray-50 { border-color: #202128; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #262832; }
+
+/* bg-gray-900 계열 텍스트가 흰색으로 지정된 버튼 대비 보정
+   (다크에서 bg-gray-900이 밝아졌으므로 흰 글자를 어둡게) */
+.dark .bg-gray-900.text-white,
+.dark .bg-gray-900 .text-white { color: #16171b; }
+
+/* 입력창 placeholder 가독성 */
+.dark input::placeholder,
+.dark textarea::placeholder { color: #6b7280; }
+
+/* 반투명 중립 틴트(자주 쓰이는 것들) 보정 */
+.dark .bg-gray-50\/50 { background-color: rgba(36, 38, 45, 0.6); }
+.dark .bg-gray-50\/40 { background-color: rgba(36, 38, 45, 0.5); }
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;

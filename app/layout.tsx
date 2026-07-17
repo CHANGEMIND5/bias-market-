@@ -30,11 +30,18 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.svg" },
 };
 
+// 페인트 전에 테마를 적용해 화면 깜빡임(FOUC) 방지.
+// 저장된 선택이 없으면 시스템 다크모드 설정을 따름.
+const THEME_SCRIPT = `try{var t=localStorage.getItem('bias-market-theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="font-sans">
         <Providers>{children}</Providers>
       </body>
