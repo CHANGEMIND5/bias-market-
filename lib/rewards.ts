@@ -93,29 +93,39 @@ async function bumpMission(
     meta = seen.join(",");
   }
 
-  const progress = row.progress + 1;
-  const completed = progress >= row.target;
-  await prisma.missionProgress.update({
+  // 원자적 증가 — 동시 이벤트가 서로 덮어써서 카운트가 누락되지 않게
+  const updated = await prisma.missionProgress.update({
     where: { id: row.id },
-    data: { progress, completed, meta: dedupeKey ? meta : row.meta },
+    data: {
+      progress: { increment: 1 },
+      ...(dedupeKey ? { meta } : {}),
+    },
   });
+  const completed = updated.progress >= updated.target;
 
-  if (completed && isDaily) {
-    // 일일 미션 완료 → 영향력/XP 자동 지급 (Fan$ 아님)
-    await grantReward(
-      userId,
-      `daily-mission:${userId}:${periodKey}:${def.type}`,
-      0,
-      REWARDS.perMissionXp,
-      REWARDS.perMissionInfluence
-    );
-    // 주간 "일일 미션 12개" 진행
-    const weekKey = `W:${kstWeekKey()}`;
-    const wDef = pickWeeklyMissions(kstWeekKey()).find(
-      (d) => d.type === "w_daily_missions_12"
-    );
-    if (wDef) {
-      await bumpMission(userId, weekKey, wDef, `${periodKey}:${def.type}`, false);
+  if (completed && !updated.completed) {
+    // 완료 처리는 조건부 갱신으로 한 번만 (동시 완료 경쟁 방지)
+    const won = await prisma.missionProgress.updateMany({
+      where: { id: row.id, completed: false },
+      data: { completed: true },
+    });
+    if (won.count > 0 && isDaily) {
+      // 일일 미션 완료 → 영향력/XP 자동 지급 (Fan$ 아님, 멱등 키로 1회)
+      await grantReward(
+        userId,
+        `daily-mission:${userId}:${periodKey}:${def.type}`,
+        0,
+        REWARDS.perMissionXp,
+        REWARDS.perMissionInfluence
+      );
+      // 주간 "일일 미션 12개" 진행
+      const weekKey = `W:${kstWeekKey()}`;
+      const wDef = pickWeeklyMissions(kstWeekKey()).find(
+        (d) => d.type === "w_daily_missions_12"
+      );
+      if (wDef) {
+        await bumpMission(userId, weekKey, wDef, `${periodKey}:${def.type}`, false);
+      }
     }
   }
   return completed;
@@ -207,6 +217,12 @@ export async function recordEvent(
     }
     case "post_opened": {
       if (!key) return;
+      // 실제 존재하는 게시글만 인정 (임의 키로 읽기 미션 어뷰징 방지)
+      const post = await prisma.post.findUnique({
+        where: { id: key },
+        select: { id: true },
+      });
+      if (!post) return;
       const dm = d("read_post_1");
       if (dm) await bumpMission(userId, dKey, dm, `${dateKey}:${key}`, true);
       const wm = w("w_read_posts_5");

@@ -36,10 +36,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false });
   }
 
-  await prisma.user.update({
-    where: { id: userId },
+  // 조건부 갱신 — 동시에 두 코드를 적용해도 "아직 추천인 없음"인
+  // 한 요청만 성공 (경쟁 조건 방지)
+  const applied = await prisma.user.updateMany({
+    where: { id: userId, referredBy: null },
     data: { referredBy: inviter.id },
   });
+  if (applied.count === 0) return NextResponse.json({ ok: false });
 
   return NextResponse.json({ ok: true });
 }
