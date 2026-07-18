@@ -11,8 +11,10 @@ import HistoryView from "@/components/HistoryView";
 import MarketNews from "@/components/MarketNews";
 import MarketTable from "@/components/MarketTable";
 import MissionsView from "@/components/MissionsView";
+import MobileTabBar from "@/components/MobileTabBar";
 import PortfolioCard from "@/components/PortfolioCard";
 import Sidebar, { View } from "@/components/Sidebar";
+import TrendingStrip from "@/components/TrendingStrip";
 import { DISCLAIMER_EN, GROUP_MAP } from "@/lib/mockData";
 import { useLang } from "@/lib/i18n";
 import { slugFor } from "@/lib/slug";
@@ -31,7 +33,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-[1440px] p-4 lg:p-6 flex flex-col lg:flex-row gap-5">
+      <div className="mx-auto max-w-[1440px] p-4 lg:p-6 pb-24 lg:pb-6 flex flex-col lg:flex-row gap-5">
         <Sidebar view={view} onNavigate={setView} />
 
         <main
@@ -42,6 +44,9 @@ export default function Page() {
             /* 모바일 순서: 배틀 → 최애 대시보드 → 마켓 테이블 → 뉴스 → 프로필 → 뱃지
                데스크톱: 테이블 전체 폭 → (배틀/대시보드/뉴스 | 프로필/뱃지) 2단 */
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+              <div className="order-0 xl:col-span-3">
+                <TrendingStrip onSelect={goToMarket} />
+              </div>
               <div className="order-3 xl:order-1 xl:col-span-3">
                 <MarketTable selectedId="" onSelect={goToMarket} />
               </div>
@@ -91,6 +96,8 @@ export default function Page() {
           </footer>
         </main>
       </div>
+
+      <MobileTabBar view={view} onNavigate={setView} />
     </div>
   );
 }

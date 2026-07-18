@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import LangSwitcher from "./LangSwitcher";
+import RewardCelebration from "./RewardCelebration";
 import ThemeToggle from "./ThemeToggle";
 import UserAvatar from "./UserAvatar";
 import { AVATAR_PRESETS } from "@/lib/avatars";
@@ -45,6 +46,7 @@ export default function Sidebar({
   } = useStore();
   const { data: session } = useSession();
   const { t } = useLang();
+  const [celebrate, setCelebrate] = useState<{ fan: number; streak: number } | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -216,8 +218,8 @@ export default function Sidebar({
         </button>
       )}
 
-      {/* Navigation — 모바일: 가로 스크롤 칩, 데스크톱: 세로 목록 */}
-      <nav className="bg-white rounded-2xl border border-gray-200 shadow-card p-2 flex lg:flex-col gap-1 overflow-x-auto">
+      {/* Navigation — 데스크톱: 세로 목록. 모바일은 하단 탭바(MobileTabBar)가 대체하므로 숨김 */}
+      <nav className="hidden lg:flex bg-white rounded-2xl border border-gray-200 shadow-card p-2 lg:flex-col gap-1 overflow-x-auto">
         {NAV.map((item) => (
           <button
             key={item.view}
@@ -236,27 +238,28 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* Balance card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-4">
-        <p className="text-xs text-gray-500">{t("side.assets")}</p>
-        <p className="text-xl font-bold text-emerald-600 mt-1">
-          Fan$ {fmt(totalAssets, 0)}
-        </p>
+      {/* Balance hero */}
+      <div
+        className="rounded-2xl shadow-card p-4 text-white"
+        style={{ background: "linear-gradient(135deg,#7c3aed,#d946ef)" }}
+      >
+        <p className="text-xs text-white/80">{t("side.assets")}</p>
+        <p className="text-2xl font-extrabold mt-1">Fan$ {fmt(totalAssets, 0)}</p>
         <div className="mt-3 space-y-1.5 text-xs">
           <div className="flex justify-between">
-            <span className="text-gray-500">{t("side.fanBalance")}</span>
-            <span className="font-medium">{fmt(state.balance, 0)}</span>
+            <span className="text-white/70">{t("side.fanBalance")}</span>
+            <span className="font-semibold">{fmt(state.balance, 0)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">{t("side.pnl")}</span>
-            <span className={`font-medium ${changeColor(totalPnl)}`}>
+            <span className="text-white/70">{t("side.pnl")}</span>
+            <span className="font-semibold">
               {totalPnl >= 0 ? "+" : ""}
               {fmt(totalPnl, 0)} ({fmtPct(pnlPct)})
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">{t("side.heldShares")}</span>
-            <span className="font-medium">{t("side.items", { n: holdingCount })}</span>
+            <span className="text-white/70">{t("side.heldShares")}</span>
+            <span className="font-semibold">{t("side.items", { n: holdingCount })}</span>
           </div>
         </div>
         {/* 보상 영역 — 가입 보너스(1회)와 일일 보상(매일)을 구분해 표시 */}
@@ -278,10 +281,7 @@ export default function Sidebar({
               onClick={async () => {
                 const r = await claimDailyReward();
                 if (r.ok)
-                  showToast(
-                    "success",
-                    `${t("mis.checkinDone", { n: fmtInt(r.fan ?? 0) })} · ${t("mis.streakNow", { n: r.streak ?? 1 })}`
-                  );
+                  setCelebrate({ fan: r.fan ?? 0, streak: r.streak ?? 1 });
                 else showToast("info", trServer(t, r.error, "err.rewardDone"));
               }}
               disabled={!canClaimReward}
@@ -339,6 +339,14 @@ export default function Sidebar({
           {fmtInt(xpInLevel)} / {fmtInt(xpPerLevel)} XP
         </p>
       </div>
+
+      {celebrate && (
+        <RewardCelebration
+          fan={celebrate.fan}
+          streak={celebrate.streak}
+          onClose={() => setCelebrate(null)}
+        />
+      )}
     </aside>
   );
 }
