@@ -12,6 +12,7 @@ import MarketNews from "@/components/MarketNews";
 import MarketTable from "@/components/MarketTable";
 import MissionsView from "@/components/MissionsView";
 import MobileTabBar from "@/components/MobileTabBar";
+import Onboarding from "@/components/Onboarding";
 import PortfolioCard from "@/components/PortfolioCard";
 import Sidebar, { View } from "@/components/Sidebar";
 import TrendingStrip from "@/components/TrendingStrip";
@@ -98,6 +99,7 @@ export default function Page() {
       </div>
 
       <MobileTabBar view={view} onNavigate={setView} />
+      <Onboarding />
     </div>
   );
 }
