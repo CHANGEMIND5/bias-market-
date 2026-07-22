@@ -21,6 +21,7 @@ import {
   referencePrice,
 } from "./economy";
 import { GROUP_MAP } from "./mockData";
+import { seasonKey } from "./season";
 
 export const STARTER_TOTAL_FAN = 1000;
 export const MAIN_STAGE_FAN = 200; // 대표 팬덤: 스테이지당 200 (합계 400)
@@ -120,7 +121,7 @@ export async function confirmStarterSelection(
       await tx.rewardLedger.create({
         data: {
           userId,
-          sourceKey: `starter-selection:${userId}`,
+          sourceKey: `starter-selection:${userId}:${seasonKey()}`,
           rewardType: "STARTER_PORTFOLIO_SELECTION",
         },
       });
@@ -207,7 +208,7 @@ async function transferFromReserve(
   await tx.rewardLedger.create({
     data: {
       userId,
-      sourceKey: `starter-stage${stage}:${userId}:${groupId}`,
+      sourceKey: `starter-stage${stage}:${userId}:${groupId}:${seasonKey()}`,
       rewardType: "STARTER_PORTFOLIO_REWARD",
       marketId: groupId,
       shareAmount: qty,
@@ -242,7 +243,7 @@ export async function claimStarterStage2(
       await tx.rewardLedger.create({
         data: {
           userId,
-          sourceKey: `starter-stage2:${userId}`,
+          sourceKey: `starter-stage2:${userId}:${seasonKey()}`,
           rewardType: "STARTER_PORTFOLIO_STAGE2",
         },
       });

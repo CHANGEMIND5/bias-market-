@@ -142,6 +142,11 @@ async function rollover(key: string): Promise<void> {
     );
   }
 
+  // ── 4b) 스타터 포트폴리오 초기화 — 다음 시즌에 다시 대표1+서브4 지급 가능 ──
+  // (지급 멱등 키가 시즌별로 분리돼 있어 새 시즌엔 다시 받을 수 있음)
+  await prisma.starterPortfolio.deleteMany({}); // allocation은 cascade 삭제
+  await prisma.starterOnboardingProgress.deleteMany({});
+
   // ── 5) 상위 3명 보상 (영향력 + 챔피언 배지, 멱등) ──
   for (let rank = 1; rank <= Math.min(3, wealth.length); rank++) {
     const w = wealth[rank - 1];
