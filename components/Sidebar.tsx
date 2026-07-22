@@ -10,7 +10,7 @@ import UserAvatar from "./UserAvatar";
 import { AVATAR_PRESETS } from "@/lib/avatars";
 import { fmt, fmtInt, changeColor, fmtPct } from "@/lib/format";
 import { TKey, trServer, useLang } from "@/lib/i18n";
-import { DAILY_REWARD, STARTING_BALANCE } from "@/lib/mockData";
+import { STARTING_BALANCE } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
 export type View =

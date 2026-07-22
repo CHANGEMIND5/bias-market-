@@ -104,19 +104,27 @@ async function rollover(key: string): Promise<void> {
     }))
     .sort((a, b) => b.wealth - a.wealth);
 
-  // ── 3) 청산: 유저별 보유가치를 잔액으로 옮기고 보유 삭제 (원자적) ──
+  // ── 3) 청산: 유저별 보유가치를 잔액으로 옮기고 보유 삭제 ──
+  // 이중 지급 방지: 트랜잭션 "안에서" 현재 보유를 다시 읽어 정산액을 계산.
+  // 동시 실행/재실행이 있어도 먼저 삭제한 쪽만 지급되고 나머지는 no-op.
   const usersWithHoldings = Array.from(
     new Set(holdings.map((h) => h.userId))
   );
   for (const uid of usersWithHoldings) {
-    const gain = holdValue.get(uid) ?? 0;
-    await prisma.$transaction([
-      prisma.user.update({
+    await prisma.$transaction(async (tx) => {
+      const hs = await tx.holding.findMany({
+        where: { userId: uid, shares: { gt: 0 } },
+        select: { groupId: true, shares: true },
+      });
+      if (hs.length === 0) return; // 이미 청산됨
+      let gain = 0;
+      for (const h of hs) gain += num(h.shares) * (spot.get(h.groupId) ?? 0);
+      await tx.user.update({
         where: { id: uid },
         data: { balance: { increment: r8(gain) } },
-      }),
-      prisma.holding.deleteMany({ where: { userId: uid } }),
-    ]);
+      });
+      await tx.holding.deleteMany({ where: { userId: uid } });
+    });
   }
 
   // ── 4) 마켓 초기화 (가격 리셋, 보유 0) ──
