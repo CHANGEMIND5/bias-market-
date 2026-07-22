@@ -5,7 +5,41 @@
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
 import AdminNav from "@/components/AdminNav";
+import { sendJSON } from "@/lib/data/api";
 import { fmt, fmtCompact, fmtInt } from "@/lib/format";
+
+// 관리자 수동 시즌 롤오버 (청산+마켓 리셋 실제 수행 — 테스트용)
+function SeasonTrigger() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const run = async () => {
+    if (!window.confirm("정말 시즌 롤오버를 실행할까요?\n모든 보유 주식이 현재 시세로 Fan$ 정산되고, 마켓 가격이 초기화됩니다. 되돌릴 수 없어요.")) return;
+    setBusy(true); setMsg(null);
+    try {
+      const d = await sendJSON("/api/admin/season", {});
+      setMsg(d?.ok ? `✅ 롤오버 완료 (${d.seasonKey})` : `❌ ${d?.error ?? "실패"}`);
+    } catch {
+      setMsg("❌ 네트워크 오류");
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+      <p className="text-sm font-bold text-amber-800">🏆 시즌 롤오버 (수동 테스트)</p>
+      <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+        평소엔 매월 말 자동 실행돼요. 이 버튼은 지금 즉시 시즌을 마감해 보는 테스트용이에요 —
+        보유 주식이 현재 시세로 Fan$ 정산되고 마켓이 초기화되며, 각 그룹 최대 보유자에게 영구 배지가 부여돼요.
+      </p>
+      <button
+        onClick={run}
+        disabled={busy}
+        className="mt-2 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 disabled:opacity-40"
+      >
+        {busy ? "실행 중..." : "지금 시즌 롤오버 실행"}
+      </button>
+      {msg && <p className="mt-2 text-xs font-semibold">{msg}</p>}
+    </div>
+  );
+}
 
 type Row = {
   groupId: string;
@@ -51,6 +85,9 @@ export default function AdminEconomyPage() {
     <div className="min-h-screen p-4 lg:p-6 max-w-[1300px] mx-auto">
       <AdminNav />
       <h1 className="text-xl font-bold mb-4">🛠 이코노미 모니터</h1>
+
+      <SeasonTrigger />
+
 
       {error && <p className="text-sm text-red-500">{error}</p>}
       {!rows && !error && <p className="text-sm text-gray-400">불러오는 중...</p>}

@@ -15,6 +15,7 @@ import MissionsView from "@/components/MissionsView";
 import MobileTabBar from "@/components/MobileTabBar";
 import Onboarding from "@/components/Onboarding";
 import PortfolioCard from "@/components/PortfolioCard";
+import SeasonCard from "@/components/SeasonCard";
 import Sidebar, { View } from "@/components/Sidebar";
 import TrendingStrip from "@/components/TrendingStrip";
 import { DISCLAIMER_EN, GROUP_MAP } from "@/lib/mockData";
@@ -52,8 +53,9 @@ export default function Page() {
               <div className="order-3 xl:order-1 xl:col-span-3">
                 <MarketTable selectedId="" onSelect={goToMarket} />
               </div>
-              <div className="order-1 xl:order-2 xl:col-span-2">
+              <div className="order-1 xl:order-2 xl:col-span-2 flex flex-col gap-5">
                 <BattleCard onSelect={goToMarket} />
+                <SeasonCard />
               </div>
               <div className="order-5 xl:order-3 xl:row-span-3 flex flex-col gap-5">
                 <FanProfileCard />

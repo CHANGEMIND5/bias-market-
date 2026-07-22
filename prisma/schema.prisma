@@ -286,6 +286,28 @@ model WeeklyFandom {
   createdAt DateTime @default(now())
 }
 
+// 월간 시즌 — 롤오버 시 청산+마켓 리셋+명예의 전당 기록
+model Season {
+  seasonKey  String    @id // KST "YYYY-MM"
+  status     String    @default("closed") // closed = 롤오버 완료
+  hallOfFame String? // JSON: [{ userId, name, wealth, rank }]
+  closedAt   DateTime  @default(now())
+}
+
+// 시즌 영구 배지 — 각 그룹 최대 보유자 + 시즌 챔피언
+model SeasonBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  seasonKey String
+  groupId   String // 실제 그룹 id, 또는 "__champion_1__".."__champion_3__"
+  kind      String   @default("GROUP_TOP") // GROUP_TOP | CHAMPION
+  rank      Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([seasonKey, groupId]) // 그룹당 시즌당 1명
+  @@index([userId])
+}
+
 model PricePoint {
   id        String   @id @default(cuid())
   groupId   String
