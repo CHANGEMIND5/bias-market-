@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import BadgesCard from "@/components/BadgesCard";
 import BattleCard from "@/components/BattleCard";
+import CollectionBadges from "@/components/CollectionBadges";
 import BiasDashboard from "@/components/BiasDashboard";
 import CommunityView from "@/components/CommunityView";
 import FanProfileCard from "@/components/FanProfileCard";
@@ -57,6 +58,7 @@ export default function Page() {
               <div className="order-5 xl:order-3 xl:row-span-3 flex flex-col gap-5">
                 <FanProfileCard />
                 <BadgesCard />
+                <CollectionBadges onSelect={goToMarket} />
               </div>
               <div className="order-2 xl:order-4 xl:col-span-2">
                 <BiasDashboard onSelect={goToMarket} />
