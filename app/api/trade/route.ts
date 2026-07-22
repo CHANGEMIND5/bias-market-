@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
-import { quoteBuy, quoteSell } from "@/lib/amm";
+import { floorShares, quoteBuy, quoteBuyShares, quoteSell, SHARE_STEP } from "@/lib/amm";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -77,13 +77,23 @@ export async function POST(req: Request) {
           if (side === "buy") {
             if (amount > user.balance)
               throw new TradeError("보유 Fan$가 부족합니다.");
-            const q = quoteBuy(pool, amount);
-            if (!q) throw new TradeError("견적을 계산할 수 없습니다.");
+            const q0 = quoteBuy(pool, amount);
+            if (!q0) throw new TradeError("견적을 계산할 수 없습니다.");
+            // 소수점 1자리(0.1주) 단위로 내림 후, 그만큼만 정확히 매수(잔돈 환불)
+            const shares = floorShares(q0.sharesOut);
+            if (shares < SHARE_STEP)
+              throw new TradeError(`최소 ${SHARE_STEP} Fan Share 이상 살 수 있는 금액을 입력해 주세요.`);
+            const q = quoteBuyShares(pool, shares);
+            if (!q || q.fanIn === undefined)
+              throw new TradeError("견적을 계산할 수 없습니다.");
+            const spend = q.fanIn; // 실제 청구 Fan$ (입력액 이하)
+            if (spend > user.balance + 1e-6)
+              throw new TradeError("보유 Fan$가 부족합니다.");
 
             const isNewHolder = heldShares <= 0;
             const updatedUser = await tx.user.update({
               where: { id: userId },
-              data: { balance: { decrement: amount }, xp: { increment: 25 } },
+              data: { balance: { decrement: r8(spend) }, xp: { increment: 25 } },
             });
             if (updatedUser.balance < -1e-6)
               throw new TradeError("보유 Fan$가 부족합니다."); // 이중 안전장치
@@ -92,22 +102,22 @@ export async function POST(req: Request) {
               data: {
                 fanReserve: r8(q.newFanReserve),
                 shareReserve: r8(q.newShareReserve),
-                volume24h: { increment: amount },
+                volume24h: { increment: r8(spend) },
                 holders: { increment: isNewHolder ? 1 : 0 },
               },
             });
             const updatedHolding = await tx.holding.upsert({
               where: { userId_groupId: { userId, groupId } },
               update: {
-                shares: r8(heldShares + q.sharesOut),
-                cost: r8(heldCost + amount),
+                shares: r8(heldShares + shares),
+                cost: r8(heldCost + spend),
               },
-              create: { userId, groupId, shares: r8(q.sharesOut), cost: amount },
+              create: { userId, groupId, shares: r8(shares), cost: r8(spend) },
             });
             const trade = await tx.trade.create({
               data: {
                 userId, groupId, side: "buy",
-                price: q.execPrice, shares: q.sharesOut, fan: amount, fee: q.fee,
+                price: q.execPrice, shares: r8(shares), fan: r8(spend), fee: q.fee,
               },
             });
             await tx.pricePoint.create({
@@ -128,16 +138,20 @@ export async function POST(req: Request) {
             };
           }
 
-          // sell
-          if (amount > heldShares + 1e-9)
+          // sell — 0.1주 단위로 내림 (단, 전량 매도 시엔 잔량 전부 매도해 dust 남기지 않음)
+          const sellAll = amount >= heldShares - 1e-9;
+          const sellAmount = sellAll ? heldShares : floorShares(amount);
+          if (sellAmount < SHARE_STEP)
+            throw new TradeError(`최소 매도 수량은 ${SHARE_STEP} Fan Share입니다.`);
+          if (sellAmount > heldShares + 1e-9)
             throw new TradeError("보유 Fan Shares가 부족합니다.");
-          const q = quoteSell(pool, amount);
+          const q = quoteSell(pool, sellAmount);
           if (!q) throw new TradeError("견적을 계산할 수 없습니다.");
 
-          const remaining = heldShares - amount;
+          const remaining = heldShares - sellAmount;
           const soldAll = remaining < 1e-6;
           const costRemoved =
-            heldShares > 0 ? heldCost * (amount / heldShares) : 0;
+            heldShares > 0 ? heldCost * (sellAmount / heldShares) : 0;
 
           const updatedUser = await tx.user.update({
             where: { id: userId },
@@ -165,7 +179,7 @@ export async function POST(req: Request) {
           const trade = await tx.trade.create({
             data: {
               userId, groupId, side: "sell",
-              price: q.execPrice, shares: amount, fan: q.fanOut, fee: q.fee,
+              price: q.execPrice, shares: r8(sellAmount), fan: q.fanOut, fee: q.fee,
             },
           });
           await tx.pricePoint.create({

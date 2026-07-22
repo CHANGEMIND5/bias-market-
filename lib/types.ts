@@ -107,6 +107,7 @@ export interface BuyQuote {
   priceImpact: number; // percentage
   newFanReserve: number;
   newShareReserve: number;
+  fanIn?: number; // 역산 매수(quoteBuyShares)에서 실제 청구할 Fan$
 }
 
 export interface SellQuote {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { runMarketActivityBot } from "@/lib/marketActivityBot";
 import { ensureMarkets } from "@/lib/markets";
+import { snapshotWeeklyFandomIfNeeded } from "@/lib/weeklyFandom";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
   try {
     await ensureMarkets();
     await runMarketActivityBot();
+    await snapshotWeeklyFandomIfNeeded(); // 주 롤오버 시 지난주 팬덤 스냅샷
   } catch (e) {
     console.error("[cron/bot] failed:", e);
     return NextResponse.json({ ok: false, error: "bot run failed" }, { status: 500 });

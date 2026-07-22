@@ -2,22 +2,45 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Emblem from "./Emblem";
-import { battleRanking } from "@/lib/battle";
+import { BattleCategory, battleRanking } from "@/lib/battle";
 import { changeColor, fmtCompact, fmtInt, fmtPct } from "@/lib/format";
 import { TKey, useLang } from "@/lib/i18n";
 import { GROUP_MAP } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
 
-function countdownToMidnight(now: number): string {
-  const d = new Date(now);
-  const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
-  let s = Math.max(0, Math.floor((midnight - now) / 1000));
+const CATEGORIES: { cat: BattleCategory; labelKey: TKey }[] = [
+  { cat: "all", labelKey: "bcat.all" },
+  { cat: "girl", labelKey: "bcat.girl" },
+  { cat: "boy", labelKey: "bcat.boy" },
+  { cat: "mega", labelKey: "bcat.mega" },
+  { cat: "large", labelKey: "bcat.large" },
+  { cat: "mid", labelKey: "bcat.mid" },
+  { cat: "rookie", labelKey: "bcat.rookie" },
+];
+
+// KST 기준 이번 주 마감(일요일 24시 = 다음 월요일 0시)까지 남은 시간
+function countdownToWeekEnd(now: number): string {
+  const KST = 9 * 3600_000;
+  const k = new Date(now + KST);
+  const day = k.getUTCDay(); // 0=일 .. 1=월
+  let daysToMon = (1 - day + 7) % 7; // 다음 월요일까지 일수
+  if (daysToMon === 0) daysToMon = 7; // 오늘이 월요일이면 이번 주 끝은 7일 후
+  const endKstMs = Date.UTC(
+    k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate() + daysToMon, 0, 0, 0
+  );
+  const endMs = endKstMs - KST;
+  let s = Math.max(0, Math.floor((endMs - now) / 1000));
+  const d = Math.floor(s / 86400);
+  s -= d * 86400;
   const h = Math.floor(s / 3600);
   s -= h * 3600;
   const m = Math.floor(s / 60);
   s -= m * 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return d > 0 ? `${d}d ${hms}` : hms;
 }
+
+interface WeekEntry { groupId: string; rank: number; score: number; ch24: number; }
 
 const CRITERIA: [TKey, string][] = [
   ["battle.cChange", "35%"],
@@ -34,7 +57,17 @@ export default function BattleCard({
   const { state, missionEvent, loggedIn } = useStore();
   const { t } = useLang();
   const [expanded, setExpanded] = useState(false);
+  const [cat, setCat] = useState<BattleCategory>("all");
   const [now, setNow] = useState<number | null>(null);
+  const [tab, setTab] = useState<"this" | "last">("this");
+  const [lastWeek, setLastWeek] = useState<WeekEntry[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/weekly-fandom", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setLastWeek(d?.lastWeek?.entries ?? []))
+      .catch(() => setLastWeek([]));
+  }, []);
 
   // 카운트다운 (클라이언트에서만 tick — SSR 불일치 방지)
   useEffect(() => {
@@ -49,7 +82,18 @@ export default function BattleCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
 
-  const ranking = useMemo(() => battleRanking(state.markets), [state.markets]);
+  const liveRanking = useMemo(
+    () => battleRanking(state.markets, cat),
+    [state.markets, cat]
+  );
+  // 이번 주 = 실시간, 지난주 = 스냅샷 (BattleEntry 형태로 통일)
+  const ranking = useMemo(() => {
+    if (tab === "this") return liveRanking;
+    return (lastWeek ?? []).map((e) => ({
+      groupId: e.groupId, rank: e.rank, score: e.score,
+      ch24: e.ch24, volume: 0, holders: 0,
+    }));
+  }, [tab, liveRanking, lastWeek]);
   const top3 = ranking.slice(0, 3);
   const rest = ranking.slice(3, expanded ? ranking.length : 7);
 
@@ -60,12 +104,55 @@ export default function BattleCard({
           <h2 className="text-lg font-bold">{t("battle.title")}</h2>
           <p className="text-sm text-gray-500 mt-0.5">{t("battle.subtitle")}</p>
         </div>
-        <span className="px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 text-xs font-bold">
-          {t("battle.countdown", {
-            t: now !== null ? countdownToMidnight(now) : "--:--:--",
-          })}
-        </span>
+        {tab === "this" && (
+          <span className="px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 text-xs font-bold">
+            {t("battle.countdown", {
+              t: now !== null ? countdownToWeekEnd(now) : "--:--:--",
+            })}
+          </span>
+        )}
       </div>
+
+      {/* 이번 주 / 지난주 토글 */}
+      <div className="mt-3 flex gap-1.5">
+        {(["this", "last"] as const).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => { setTab(tb); setExpanded(false); }}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              tab === tb ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            {t(tb === "this" ? "battle.thisWeekTab" : "battle.lastWeekTab")}
+          </button>
+        ))}
+      </div>
+
+      {/* 카테고리 세분화 탭 (이번 주만) */}
+      {tab === "this" && (
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          {CATEGORIES.map(({ cat: c, labelKey }) => (
+            <button
+              key={c}
+              onClick={() => { setCat(c); setExpanded(false); }}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                cat === c
+                  ? "bg-violet-600 text-white"
+                  : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+              }`}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "this" && ranking.length === 0 && (
+        <p className="py-6 text-center text-sm text-gray-400">{t("battle.emptyCat")}</p>
+      )}
+      {tab === "last" && ranking.length === 0 && (
+        <p className="py-6 text-center text-sm text-gray-400">{t("battle.lastWeekEmpty")}</p>
+      )}
 
       {/* Top 3 podium */}
       <div className="mt-4 grid grid-cols-3 gap-3">

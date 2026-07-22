@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
-import { quoteBuy, quoteSell, spotPrice } from "@/lib/amm";
+import { floorShares, quoteBuy, quoteSell, spotPrice } from "@/lib/amm";
 import { changeColor, fmt, fmtShares } from "@/lib/format";
 import { trServer, useLang } from "@/lib/i18n";
 import { MIN_BUY, MIN_SELL } from "@/lib/mockData";
@@ -45,7 +45,10 @@ export default function TradePanel({
   const setBuyPct = (pct: number) =>
     setBuyInput(state.balance > 0 ? String(Math.floor(state.balance * pct)) : "");
   const setSellPct = (pct: number) =>
-    setSellInput(owned > 0 ? (owned * pct).toFixed(2) : "");
+    // 0.1주 단위. 전체(100%)는 dust까지 전량, 나머지는 0.1 내림
+    setSellInput(
+      owned > 0 ? (pct >= 1 ? String(owned) : floorShares(owned * pct).toFixed(1)) : ""
+    );
 
   // 인라인 검증 (버튼 비활성화용)
   const buyError =
@@ -68,7 +71,7 @@ export default function TradePanel({
   const sellDisabled = pending || sellAmount <= 0 || !!sellError || !sellQuote;
 
   // 거래 후 예상 값
-  const buyAfterShares = owned + (buyQuote?.sharesOut ?? 0);
+  const buyAfterShares = owned + floorShares(buyQuote?.sharesOut ?? 0);
   const buyAfterAvg =
     buyQuote && buyAfterShares > 0
       ? ((holding?.cost ?? 0) + buyAmount) / buyAfterShares
@@ -215,7 +218,7 @@ export default function TradePanel({
             )}
             {row(
               t("trade.receive"),
-              buyQuote ? `${fmtShares(buyQuote.sharesOut)} Fan Shares` : "—",
+              buyQuote ? `${fmtShares(floorShares(buyQuote.sharesOut))} Fan Shares` : "—",
               "font-bold"
             )}
             {row(t("trade.fee"), buyQuote ? `Fan$ ${fmt(buyQuote.fee)}` : "—")}

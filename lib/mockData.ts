@@ -15,7 +15,7 @@ export const STARTING_BALANCE = 10_000; // Fan$ granted on first visit
 export const DAILY_REWARD = 2_000; // Fan$ per daily claim
 export const FEE_RATE = 0.003; // 0.3% swap fee
 export const MIN_BUY = 10; // minimum buy in Fan$
-export const MIN_SELL = 1; // minimum sell in Fan Shares
+export const MIN_SELL = 0.1; // minimum sell in Fan Shares (0.1주 단위 거래)
 export const INITIAL_POOL = 1_000_000; // 1,000,000 Fan$ + 1,000,000 Fan Shares at price 1
 
 // 친구 초대 보상 — 초대받은 유저가 "첫 거래"를 완료해야 지급 (어뷰징 방지)

@@ -69,6 +69,25 @@ body {
 .dark .bg-gray-50\/50 { background-color: rgba(36, 38, 45, 0.6); }
 .dark .bg-gray-50\/40 { background-color: rgba(36, 38, 45, 0.5); }
 
+/* ── 강조색 연한 배경(‑50 틴트)을 다크에서 어둡게 ──
+   라이트 테마의 연한 틴트 위에 있던 글자가 다크에서 밝은 본문색을
+   상속받아 "밝은 배경 + 밝은 글자"로 겹쳐 안 보이는 문제를 해결.
+   투명도 있는 변형(/40, /50 등)도 함께 처리. */
+.dark [class*="bg-violet-50"] { background-color: rgba(124, 58, 237, 0.18) !important; }
+.dark [class*="bg-emerald-50"] { background-color: rgba(16, 160, 108, 0.18) !important; }
+.dark [class*="bg-amber-50"] { background-color: rgba(217, 119, 6, 0.18) !important; }
+.dark [class*="bg-red-50"] { background-color: rgba(229, 72, 77, 0.18) !important; }
+.dark [class*="bg-rose-50"] { background-color: rgba(244, 63, 94, 0.16) !important; }
+.dark [class*="bg-blue-50"] { background-color: rgba(59, 130, 246, 0.18) !important; }
+.dark [class*="bg-fuchsia-50"] { background-color: rgba(217, 70, 239, 0.16) !important; }
+
+/* 강조색 진한 글자(‑700)를 다크에서 조금 밝게 해 가독성 확보 */
+.dark .text-violet-700 { color: #c4b5fd; }
+.dark .text-emerald-700 { color: #6ee7b7; }
+.dark .text-amber-700 { color: #fcd34d; }
+.dark .text-violet-600 { color: #a78bfa; }
+.dark .text-emerald-600 { color: #34d399; }
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;

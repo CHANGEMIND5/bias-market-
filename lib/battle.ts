@@ -1,7 +1,27 @@
 import { todayString } from "./format";
-import { VISIBLE_GROUPS } from "./mockData";
+import { GROUP_MAP, VISIBLE_GROUPS } from "./mockData";
 import { hashString, mulberry32 } from "./rng";
 import { MarketState } from "./types";
+
+// 팬덤 배틀 카테고리 (세분화)
+export type BattleCategory =
+  | "all"
+  | "girl"
+  | "boy"
+  | "mega"
+  | "large"
+  | "mid"
+  | "rookie";
+
+/** 카테고리에 해당하는 그룹인지 */
+function matchesCategory(groupId: string, cat: BattleCategory): boolean {
+  if (cat === "all") return true;
+  const g = GROUP_MAP[groupId];
+  if (!g) return false;
+  if (cat === "girl") return g.gender === "girl";
+  if (cat === "boy") return g.gender === "boy";
+  return g.tier === cat; // mega | large | mid | rookie
+}
 
 // ─────────────────────────────────────────────────────────────
 // 팬덤 배틀 점수 — 가중치는 여기서 수정
@@ -22,14 +42,16 @@ export interface BattleEntry {
   holders: number;
 }
 
-/** 전체 종목의 오늘 배틀 랭킹 (점수 내림차순, rank 포함) */
+/** 배틀 랭킹 (점수 내림차순, rank 포함). category로 걸/보이/티어 세분화. */
 export function battleRanking(
-  markets: Record<string, MarketState>
+  markets: Record<string, MarketState>,
+  category: BattleCategory = "all"
 ): BattleEntry[] {
   // 배틀 랭킹은 메인 노출(active + rookie) 종목만 대상
   const rows = VISIBLE_GROUPS.flatMap((g) => {
     const m = markets[g.id];
     if (!m) return [];
+    if (!matchesCategory(g.id, category)) return [];
     const price = m.fanReserve / m.shareReserve;
     const ch24 =
       m.baseline24h > 0 ? ((price - m.baseline24h) / m.baseline24h) * 100 : 0;

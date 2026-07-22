@@ -279,6 +279,13 @@ model Trade {
   @@index([isSystem, createdAt])
 }
 
+// 주간 팬덤 배틀 스냅샷 — 매주 롤오버 시 지난주 랭킹을 1회 저장
+model WeeklyFandom {
+  weekKey   String   @id // KST 주 키 (그 주 월요일 날짜)
+  data      String // JSON: [{ groupId, rank, score, ch24 }]
+  createdAt DateTime @default(now())
+}
+
 model PricePoint {
   id        String   @id @default(cuid())
   groupId   String
