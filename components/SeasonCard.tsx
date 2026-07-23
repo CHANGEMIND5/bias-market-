@@ -101,42 +101,42 @@ export default function SeasonCard() {
           {data.myBadges.length === 0 ? (
             <p className="text-[11px] text-gray-400">{t("season.noBadges")}</p>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {data.myBadges.map((b, i) => {
-                const on = data.selectedTitle === b.code;
-                const label =
-                  b.kind === "CHAMPION"
-                    ? `🏅 ${b.seasonKey} ${t("season.champion", { n: b.rank })}`
-                    : `👑 ${b.seasonKey} ${b.groupName ?? b.groupId} ${t("season.groupTop")}`;
-                return (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="flex-1 px-2 py-1 rounded-lg bg-amber-50 border border-amber-100 text-[11px] font-semibold text-amber-700 truncate">
-                      {label}
-                    </span>
+            <>
+              {/* 칩을 탭하면 그 배지를 칭호로 설정/해제 (사용 중이면 보라 채움 + ✓) */}
+              <div className="flex flex-wrap gap-1.5">
+                {data.myBadges.map((b, i) => {
+                  const on = data.selectedTitle === b.code;
+                  const label =
+                    b.kind === "CHAMPION"
+                      ? `🏅 ${b.seasonKey} ${t("season.champion", { n: b.rank })}`
+                      : `👑 ${b.seasonKey} ${b.groupName ?? b.groupId}`;
+                  return (
                     <button
+                      key={i}
                       onClick={() => setTitle(on ? null : b.code)}
                       disabled={busy}
-                      className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                      title={t("season.titleSet")}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
                         on
-                          ? "bg-violet-600 text-white"
-                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                          ? "bg-violet-600 text-white border-violet-600"
+                          : "bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100"
                       }`}
                     >
-                      {on ? t("season.titleOn") : t("season.titleSet")}
+                      {label}{on ? " ✓" : ""}
                     </button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
               {data.selectedTitle && (
                 <button
                   onClick={() => setTitle(null)}
                   disabled={busy}
-                  className="self-start text-[11px] text-gray-400 hover:text-gray-600 mt-0.5"
+                  className="text-[11px] text-gray-400 hover:text-gray-600 mt-1.5"
                 >
                   {t("season.titleClear")}
                 </button>
               )}
-            </div>
+            </>
           )}
         </div>
       )}

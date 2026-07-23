@@ -50,13 +50,13 @@ export default function CollectionBadges({
       <h2 className="text-lg font-bold">{t("col.title")}</h2>
       <p className="text-sm text-gray-500 mt-0.5">{t("col.sub")}</p>
 
-      {/* 최대 보유자 배지 */}
+      {/* 최대 보유자 배지 — 컴팩트 칩 (탭하면 그 마켓으로) */}
       {topHolder.length > 0 && (
         <div className="mt-4">
           <p className="text-xs font-bold text-gray-600 mb-2">
             👑 {t("col.topHolderTitle")}
           </p>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {topHolder.map(({ groupId, rank }) => {
               const g = GROUP_MAP[groupId];
               if (!g) return null;
@@ -64,16 +64,12 @@ export default function CollectionBadges({
                 <button
                   key={groupId}
                   onClick={() => onSelect?.(groupId)}
-                  className="flex items-center gap-2.5 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-left hover:bg-amber-50 transition-colors"
+                  title={t("col.topHolderRank", { n: rank })}
+                  className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border border-amber-100 bg-amber-50/70 hover:bg-amber-50 transition-colors"
                 >
-                  <span className="text-lg" aria-hidden>{RANK_ICON[rank - 1] ?? "🏅"}</span>
-                  <Emblem group={g} size={28} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold truncate">{g.name}</p>
-                    <p className="text-[11px] text-amber-600 font-semibold">
-                      {t("col.topHolderRank", { n: rank })}
-                    </p>
-                  </div>
+                  <span className="text-sm" aria-hidden>{RANK_ICON[rank - 1] ?? "🏅"}</span>
+                  <Emblem group={g} size={18} />
+                  <span className="text-[11px] font-bold text-amber-700">{g.name}</span>
                 </button>
               );
             })}

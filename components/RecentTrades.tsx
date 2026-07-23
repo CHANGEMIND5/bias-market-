@@ -119,14 +119,16 @@ export default function RecentTrades({
                   </span>
                 )}
               </td>
-              <td className="py-2">
-                {r.isSystem && (
-                  <span className="mr-1 px-1 py-0.5 rounded bg-gray-100 text-gray-400 text-[9px] font-bold align-middle">
-                    SYSTEM
+              <td className="py-2 whitespace-nowrap">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  {r.isSystem && (
+                    <span className="px-1 py-0.5 rounded bg-gray-100 text-gray-400 text-[9px] font-bold">
+                      SYSTEM
+                    </span>
+                  )}
+                  <span className={`font-semibold ${r.side === "buy" ? "text-up" : "text-down"}`}>
+                    {r.side === "buy" ? t("buy") : t("sell")}
                   </span>
-                )}
-                <span className={`font-semibold ${r.side === "buy" ? "text-up" : "text-down"}`}>
-                  {r.side === "buy" ? t("buy") : t("sell")}
                 </span>
               </td>
               <td className="py-2 text-right">{fmt(r.price)}</td>
