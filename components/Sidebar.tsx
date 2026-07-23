@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  BarChart3, Clock, Gift, Heart, MessageCircle, Trophy, Wallet, type LucideIcon,
+} from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import LangSwitcher from "./LangSwitcher";
 import RewardCelebration from "./RewardCelebration";
@@ -22,14 +25,14 @@ export type View =
   | "community"
   | "missions";
 
-const NAV: { view: View; labelKey: TKey; icon: string }[] = [
-  { view: "market", labelKey: "nav.market", icon: "📊" },
-  { view: "ranking", labelKey: "nav.ranking", icon: "🏆" },
-  { view: "watchlist", labelKey: "nav.watchlist", icon: "🤍" },
-  { view: "portfolio", labelKey: "nav.portfolio", icon: "📁" },
-  { view: "history", labelKey: "nav.history", icon: "🕓" },
-  { view: "community", labelKey: "nav.community", icon: "💬" },
-  { view: "missions", labelKey: "nav.missions", icon: "🎁" },
+const NAV: { view: View; labelKey: TKey; icon: LucideIcon }[] = [
+  { view: "market", labelKey: "nav.market", icon: BarChart3 },
+  { view: "ranking", labelKey: "nav.ranking", icon: Trophy },
+  { view: "watchlist", labelKey: "nav.watchlist", icon: Heart },
+  { view: "portfolio", labelKey: "nav.portfolio", icon: Wallet },
+  { view: "history", labelKey: "nav.history", icon: Clock },
+  { view: "community", labelKey: "nav.community", icon: MessageCircle },
+  { view: "missions", labelKey: "nav.missions", icon: Gift },
 ];
 
 export default function Sidebar({
@@ -222,22 +225,23 @@ export default function Sidebar({
 
       {/* Navigation — 데스크톱: 세로 목록. 모바일은 하단 탭바(MobileTabBar)가 대체하므로 숨김 */}
       <nav className="hidden lg:flex bg-white rounded-2xl border border-gray-200 shadow-card p-2 lg:flex-col gap-1 overflow-x-auto">
-        {NAV.map((item) => (
-          <button
-            key={item.view}
-            onClick={() => onNavigate(item.view)}
-            className={`shrink-0 lg:w-full flex items-center gap-2 lg:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
-              view === item.view
-                ? "bg-emerald-50 text-emerald-700"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <span className="text-base leading-none" aria-hidden>
-              {item.icon}
-            </span>
-            {t(item.labelKey)}
-          </button>
-        ))}
+        {NAV.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.view}
+              onClick={() => onNavigate(item.view)}
+              className={`shrink-0 lg:w-full flex items-center gap-2 lg:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
+                view === item.view
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Icon size={18} strokeWidth={view === item.view ? 2.4 : 2} aria-hidden />
+              {t(item.labelKey)}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Balance hero */}
