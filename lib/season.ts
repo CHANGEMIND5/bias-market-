@@ -127,12 +127,22 @@ async function rollover(key: string): Promise<void> {
     });
   }
 
-  // ── 4) 마켓 초기화 (가격 리셋, 보유 0) ──
+  // ── 4) 마켓 초기화 — 지난 시즌 성과를 다음 시즌 시작가에 반영 (C안) ──
+  // 시작가 = 시드값 × (1 + BLEND × (지난시즌 종가/시드값 − 1)), 0.6~2.5배로 제한.
+  // 인기 그룹(매수세로 종가↑)은 다음 시즌을 조금 높게 시작, 폭주는 방지.
+  const BLEND = 0.35, MIN_MULT = 0.6, MAX_MULT = 2.5;
+  const carryStart = (g: { id: string; seedPrice: number }): number => {
+    const endP = spot.get(g.id) ?? g.seedPrice; // 리셋 직전 종가 (2)단계 스냅샷
+    if (!(endP > 0) || !(g.seedPrice > 0)) return g.seedPrice;
+    const perf = endP / g.seedPrice;
+    const mult = Math.min(MAX_MULT, Math.max(MIN_MULT, 1 + BLEND * (perf - 1)));
+    return Math.round(g.seedPrice * mult * 100) / 100;
+  };
   for (let i = 0; i < GROUPS.length; i += 50) {
     const chunk = GROUPS.slice(i, i + 50);
     await prisma.$transaction(
       chunk.map((g) => {
-        const init = v2MarketInit(g);
+        const init = v2MarketInit(g, carryStart(g));
         const { groupId, ...data } = init;
         return prisma.market.updateMany({
           where: { groupId, economyVersion: ECONOMY_VERSION },

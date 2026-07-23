@@ -20,14 +20,17 @@ import { GROUPS } from "./mockData";
  *   systemReserveShares =   400,000 (스타터/미션 보상·봇용 준비금)
  *   poolFan             = seedPrice × 600,000  →  시작가 = seedPrice
  */
-export function v2MarketInit(g: {
-  id: string;
-  seedPrice: number;
-  seedVolume24h: number;
-}) {
+export function v2MarketInit(
+  g: {
+    id: string;
+    seedPrice: number;
+    seedVolume24h: number;
+  },
+  startPrice?: number // 지정 시 시작가 override (시즌 성과 반영용). 기본은 seedPrice.
+) {
   const shareReserve = INITIAL_POOL_SHARES;
-  const fanReserve = g.seedPrice * INITIAL_POOL_SHARES;
-  const price = fanReserve / shareReserve;
+  const price = startPrice && startPrice > 0 ? startPrice : g.seedPrice;
+  const fanReserve = price * INITIAL_POOL_SHARES;
   return {
     groupId: g.id,
     fanReserve,
