@@ -15,6 +15,7 @@ import { useStore } from "@/lib/store";
 
 export type View =
   | "market"
+  | "ranking"
   | "watchlist"
   | "portfolio"
   | "history"
@@ -23,6 +24,7 @@ export type View =
 
 const NAV: { view: View; labelKey: TKey; icon: string }[] = [
   { view: "market", labelKey: "nav.market", icon: "📊" },
+  { view: "ranking", labelKey: "nav.ranking", icon: "🏆" },
   { view: "watchlist", labelKey: "nav.watchlist", icon: "🤍" },
   { view: "portfolio", labelKey: "nav.portfolio", icon: "📁" },
   { view: "history", labelKey: "nav.history", icon: "🕓" },

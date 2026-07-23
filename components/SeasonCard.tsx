@@ -2,6 +2,7 @@
 
 // 월간 시즌 카드 — 카운트다운 + 내 시즌 영구 배지 + 지난 시즌 명예의 전당.
 import { useCallback, useEffect, useState } from "react";
+import { CardSkeleton } from "./Skeleton";
 import { sendJSON } from "@/lib/data/api";
 import { fmtInt } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
@@ -75,7 +76,7 @@ export default function SeasonCard() {
     return () => clearInterval(id);
   }, []);
 
-  if (!data) return null;
+  if (!data) return <CardSkeleton lines={4} />;
   const remain = data.endsInMs - (now - loadedAt);
 
   const RANK_ICON = ["👑", "🥈", "🥉"];

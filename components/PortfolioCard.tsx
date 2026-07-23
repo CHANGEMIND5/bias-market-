@@ -77,8 +77,15 @@ export default function PortfolioCard({
             <tbody>
               {holdings.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-gray-400">
-                    {t("pf.empty")}
+                  <td colSpan={6} className="py-10 text-center">
+                    <p className="text-4xl mb-2">📈</p>
+                    <p className="text-sm text-gray-500">{t("pf.empty")}</p>
+                    <button
+                      onClick={() => onSelect("bts")}
+                      className="mt-3 px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
+                    >
+                      {t("pf.emptyCta")}
+                    </button>
                   </td>
                 </tr>
               )}

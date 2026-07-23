@@ -6,7 +6,7 @@ import { TKey, useLang } from "@/lib/i18n";
 
 const TABS: { view: View; labelKey: TKey; icon: string }[] = [
   { view: "market", labelKey: "nav.market", icon: "📊" },
-  { view: "watchlist", labelKey: "nav.watchlist", icon: "🤍" },
+  { view: "ranking", labelKey: "nav.ranking", icon: "🏆" },
   { view: "portfolio", labelKey: "nav.portfolio", icon: "📁" },
   { view: "community", labelKey: "nav.community", icon: "💬" },
   { view: "missions", labelKey: "nav.missions", icon: "🎁" },

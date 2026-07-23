@@ -4,6 +4,7 @@
 // 데이터는 /api/badges에서. Fan Shares 수량은 노출하지 않음(순위만).
 import { useCallback, useEffect, useState } from "react";
 import Emblem from "./Emblem";
+import { CardSkeleton } from "./Skeleton";
 import { useLang } from "@/lib/i18n";
 import { GROUP_MAP, VISIBLE_GROUPS } from "@/lib/mockData";
 import { useStore } from "@/lib/store";
@@ -37,6 +38,7 @@ export default function CollectionBadges({
   }, [loggedIn, load]);
 
   if (!loggedIn) return null;
+  if (!data) return <CardSkeleton lines={3} />;
 
   const total = VISIBLE_GROUPS.length;
   const collected = data?.collected ?? [];
