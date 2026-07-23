@@ -22,10 +22,18 @@ interface Totals {
   systemTrades24h: number;
   activeMarkets: number;
 }
+interface Users {
+  total: number;
+  new24h: number;
+  new7d: number;
+  traders: number;
+  activeTraders7d: number;
+}
 
 export default function AdminActivityPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [users, setUsers] = useState<Users | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,7 +42,7 @@ export default function AdminActivityPage() {
         if (!r.ok) throw new Error(r.status === 403 ? "관리자 계정으로 로그인해 주세요." : "불러오지 못했어요.");
         return r.json();
       })
-      .then((d) => { setRows(d.rows); setTotals(d.totals); })
+      .then((d) => { setRows(d.rows); setTotals(d.totals); setUsers(d.users); })
       .catch((e) => setError(e.message));
   }, []);
 
@@ -48,6 +56,19 @@ export default function AdminActivityPage() {
 
       {error && <p className="text-sm text-red-500">{error}</p>}
       {!rows && !error && <p className="text-sm text-gray-400">불러오는 중...</p>}
+
+      {users && (
+        <div className="mb-4">
+          <p className="text-xs font-bold text-gray-500 mb-2">👥 가입 유저</p>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+            <Stat label="총 가입자" value={fmtInt(users.total)} />
+            <Stat label="24h 신규" value={`+${fmtInt(users.new24h)}`} />
+            <Stat label="7일 신규" value={`+${fmtInt(users.new7d)}`} />
+            <Stat label="거래한 유저" value={fmtInt(users.traders)} />
+            <Stat label="7일 활성(거래)" value={fmtInt(users.activeTraders7d)} />
+          </div>
+        </div>
+      )}
 
       {totals && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">

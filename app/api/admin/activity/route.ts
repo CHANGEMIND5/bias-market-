@@ -16,23 +16,40 @@ export async function GET() {
   }
 
   const since = new Date(Date.now() - 24 * 3600_000);
-  const [markets, tradeAgg, userCount24, sysCount24, holdersAgg] =
-    await Promise.all([
-      prisma.market.findMany(),
-      // 종목·유형별 24h 거래 건수
-      prisma.trade.groupBy({
-        by: ["groupId", "isSystem"],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-      }),
-      prisma.trade.count({ where: { createdAt: { gte: since }, isSystem: false } }),
-      prisma.trade.count({ where: { createdAt: { gte: since }, isSystem: true } }),
-      prisma.holding.groupBy({
-        by: ["groupId"],
-        where: { shares: { gt: 0 } },
-        _count: { _all: true },
-      }),
-    ]);
+  const since7d = new Date(Date.now() - 7 * 24 * 3600_000);
+  const [
+    markets, tradeAgg, userCount24, sysCount24, holdersAgg,
+    totalUsers, newUsers24, newUsers7d, tradersAll, activeTraders7d,
+  ] = await Promise.all([
+    prisma.market.findMany(),
+    // 종목·유형별 24h 거래 건수
+    prisma.trade.groupBy({
+      by: ["groupId", "isSystem"],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+    }),
+    prisma.trade.count({ where: { createdAt: { gte: since }, isSystem: false } }),
+    prisma.trade.count({ where: { createdAt: { gte: since }, isSystem: true } }),
+    prisma.holding.groupBy({
+      by: ["groupId"],
+      where: { shares: { gt: 0 } },
+      _count: { _all: true },
+    }),
+    // ─── 유저 통계 ───
+    prisma.user.count(),
+    prisma.user.count({ where: { createdAt: { gte: since } } }),
+    prisma.user.count({ where: { createdAt: { gte: since7d } } }),
+    // 한 번이라도 거래한 유저 수
+    prisma.trade.findMany({
+      where: { isSystem: false, userId: { not: null } },
+      distinct: ["userId"], select: { userId: true },
+    }),
+    // 최근 7일 거래한 유저 수
+    prisma.trade.findMany({
+      where: { isSystem: false, userId: { not: null }, createdAt: { gte: since7d } },
+      distinct: ["userId"], select: { userId: true },
+    }),
+  ]);
 
   const userTradeMap = new Map<string, number>();
   const sysTradeMap = new Map<string, number>();
@@ -70,6 +87,13 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
+    users: {
+      total: totalUsers,
+      new24h: newUsers24,
+      new7d: newUsers7d,
+      traders: tradersAll.length,
+      activeTraders7d: activeTraders7d.length,
+    },
     totals: {
       volume24h: totalVolume,
       userTrades24h: userCount24,
