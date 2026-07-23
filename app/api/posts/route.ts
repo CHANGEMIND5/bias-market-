@@ -23,7 +23,7 @@ const GLOBAL_MAX_LENGTH = 500; // 전체 커뮤니티는 기존 짧은 제한 �
 const POLL_DURATIONS = new Set([1, 3, 7]);
 
 const postInclude = (uid: string | null) => ({
-  user: { select: { name: true, image: true, email: true } },
+  user: { select: { name: true, image: true, email: true, selectedTitle: true } },
   _count: { select: { likes: true, comments: true, reports: true } },
   likes: uid
     ? { where: { userId: uid }, select: { userId: true } }

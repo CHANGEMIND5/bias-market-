@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import Emblem from "./Emblem";
+import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
 import { sendJSON } from "@/lib/data/api";
 import { TKey, trServer, useLang } from "@/lib/i18n";
@@ -25,6 +26,7 @@ interface Author {
   image: string | null;
   isAdmin?: boolean;
   labels?: UserLabel[];
+  title?: string | null;
 }
 interface Poll {
   closesAt: string;
@@ -649,6 +651,7 @@ function Feed({
                   </span>
                 )}
                 <LabelChips labels={p.author.labels} />
+                <TitleBadge code={p.author.title} />
               </p>
               <p className="text-[11px] text-gray-400">{timeAgo(p.time, t)}</p>
             </div>
@@ -720,6 +723,7 @@ function Feed({
                       <p className="text-xs min-w-0">
                         <span className="font-semibold">{c.author.name}</span>
                         <LabelChips labels={c.author.labels} />
+                        <TitleBadge code={c.author.title} />
                         <span className="text-gray-400 ml-1.5 text-[10px]">{timeAgo(c.time, t)}</span>
                       </p>
                       <span className="flex items-center gap-1.5 shrink-0">

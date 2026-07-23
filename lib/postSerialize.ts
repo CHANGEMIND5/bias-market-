@@ -14,7 +14,7 @@ export interface SerializedPost {
   isLocked: boolean;
   moderationStatus: string;
   time: string;
-  author: { name: string; image: string | null; isAdmin: boolean; labels: UserLabel[] };
+  author: { name: string; image: string | null; isAdmin: boolean; labels: UserLabel[]; title: string | null };
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
@@ -81,6 +81,7 @@ export async function serializePosts(
         image: p.user?.image ?? null,
         isAdmin: isAdminEmail(p.user?.email),
         labels: labelOf(p.userId),
+        title: p.user?.selectedTitle ?? null,
       },
       likeCount: p._count?.likes ?? 0,
       commentCount: p._count?.comments ?? 0,

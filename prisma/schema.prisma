@@ -19,6 +19,7 @@ model User {
   referredBy     String? // 나를 초대한 유저의 id
   refRewarded    Boolean    @default(false) // 첫 거래 초대 보상 지급 여부
   refCount       Int        @default(0) // 성공한 초대 수
+  selectedTitle  String? // 글에 표시할 칭호 코드 (예: "G:2026-07:bts", "C:2026-07:1")
   createdAt      DateTime   @default(now())
   holdings       Holding[]
   trades         Trade[]

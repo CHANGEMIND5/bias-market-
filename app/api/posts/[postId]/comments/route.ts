@@ -19,7 +19,7 @@ export async function GET(
     orderBy: { createdAt: "asc" },
     take: 50,
     include: {
-      user: { select: { name: true, image: true } },
+      user: { select: { name: true, image: true, selectedTitle: true } },
       _count: { select: { reports: true } },
     },
   });
@@ -29,7 +29,11 @@ export async function GET(
       id: c.id,
       body: c.body,
       time: c.createdAt.toISOString(),
-      author: { name: c.user?.name ?? "익명 팬", image: c.user?.image ?? null },
+      author: {
+        name: c.user?.name ?? "익명 팬",
+        image: c.user?.image ?? null,
+        title: c.user?.selectedTitle ?? null,
+      },
       mine: uid !== null && c.userId === uid,
       reportCount: viewerIsAdmin ? c._count.reports : undefined,
     })),
@@ -86,7 +90,7 @@ export async function POST(
 
   const comment = await prisma.comment.create({
     data: { postId: params.postId, userId, body },
-    include: { user: { select: { name: true, image: true } } },
+    include: { user: { select: { name: true, image: true, selectedTitle: true } } },
   });
 
   return NextResponse.json({
@@ -95,7 +99,11 @@ export async function POST(
       id: comment.id,
       body: comment.body,
       time: comment.createdAt.toISOString(),
-      author: { name: comment.user?.name ?? "익명 팬", image: comment.user?.image ?? null },
+      author: {
+        name: comment.user?.name ?? "익명 팬",
+        image: comment.user?.image ?? null,
+        title: comment.user?.selectedTitle ?? null,
+      },
     },
   });
 }

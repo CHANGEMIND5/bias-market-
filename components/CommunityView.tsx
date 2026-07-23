@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
+import TitleBadge from "./TitleBadge";
 import UserAvatar from "./UserAvatar";
 import { trServer, useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
@@ -10,6 +11,7 @@ interface Author {
   name: string;
   image: string | null;
   isAdmin?: boolean;
+  title?: string | null;
 }
 
 interface PostItem {
@@ -344,6 +346,7 @@ export default function CommunityView() {
                       {t("comm.admin")}
                     </span>
                   )}
+                  <TitleBadge code={p.author.title} />
                   {p.mine && (
                     <span className="ml-1.5 text-[10px] text-violet-500 font-semibold">
                       {t("trades.me")}
@@ -406,6 +409,7 @@ export default function CommunityView() {
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs min-w-0">
                           <span className="font-semibold">{c.author.name}</span>
+                          <TitleBadge code={c.author.title} />
                           <span className="text-gray-400 ml-1.5 text-[10px]">
                             {timeAgo(c.time)}
                           </span>

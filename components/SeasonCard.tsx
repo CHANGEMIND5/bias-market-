@@ -2,6 +2,7 @@
 
 // 월간 시즌 카드 — 카운트다운 + 내 시즌 영구 배지 + 지난 시즌 명예의 전당.
 import { useCallback, useEffect, useState } from "react";
+import { sendJSON } from "@/lib/data/api";
 import { fmtInt } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
@@ -12,6 +13,7 @@ interface Badge {
   kind: string;
   rank: number;
   groupName: string | null;
+  code: string;
 }
 interface Hall {
   userId: string;
@@ -25,6 +27,7 @@ interface SeasonData {
   lastSeasonKey: string | null;
   hallOfFame: Hall[];
   myBadges: Badge[];
+  selectedTitle: string | null;
 }
 
 function fmtCountdown(ms: number): string {
@@ -36,11 +39,12 @@ function fmtCountdown(ms: number): string {
 }
 
 export default function SeasonCard() {
-  const { loggedIn } = useStore();
+  const { loggedIn, showToast } = useStore();
   const { t } = useLang();
   const [data, setData] = useState<SeasonData | null>(null);
   const [loadedAt, setLoadedAt] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -48,6 +52,23 @@ export default function SeasonCard() {
       if (res.ok) { setData(await res.json()); setLoadedAt(Date.now()); }
     } catch { /* ignore */ }
   }, []);
+
+  const setTitle = async (code: string | null) => {
+    setBusy(true);
+    try {
+      const d = await sendJSON("/api/title", { code });
+      if (d?.ok) {
+        setData((prev) => (prev ? { ...prev, selectedTitle: code } : prev));
+        showToast("success", code ? t("season.titleApplied") : t("season.titleRemoved"));
+      } else {
+        showToast("error", d?.error ?? t("err.network"));
+      }
+    } catch {
+      showToast("error", t("err.network"));
+    } finally {
+      setBusy(false);
+    }
+  };
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
@@ -70,24 +91,50 @@ export default function SeasonCard() {
       </p>
       <p className="mt-1 text-[11px] text-gray-400 leading-relaxed">{t("season.notice")}</p>
 
-      {/* 내 시즌 배지 */}
+      {/* 내 시즌 배지 — 칭호로 설정 가능 */}
       {loggedIn && (
         <div className="mt-4">
-          <p className="text-xs font-bold text-gray-600 mb-1.5">{t("season.myBadges")}</p>
+          <p className="text-xs font-bold text-gray-600 mb-1.5">
+            {t("season.myBadges")} <span className="text-gray-400 font-normal">· {t("season.titleHint")}</span>
+          </p>
           {data.myBadges.length === 0 ? (
             <p className="text-[11px] text-gray-400">{t("season.noBadges")}</p>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {data.myBadges.map((b, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-1 rounded-lg bg-amber-50 border border-amber-100 text-[11px] font-semibold text-amber-700"
-                >
-                  {b.kind === "CHAMPION"
+            <div className="flex flex-col gap-1.5">
+              {data.myBadges.map((b, i) => {
+                const on = data.selectedTitle === b.code;
+                const label =
+                  b.kind === "CHAMPION"
                     ? `🏅 ${b.seasonKey} ${t("season.champion", { n: b.rank })}`
-                    : `👑 ${b.seasonKey} ${b.groupName ?? b.groupId} ${t("season.groupTop")}`}
-                </span>
-              ))}
+                    : `👑 ${b.seasonKey} ${b.groupName ?? b.groupId} ${t("season.groupTop")}`;
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="flex-1 px-2 py-1 rounded-lg bg-amber-50 border border-amber-100 text-[11px] font-semibold text-amber-700 truncate">
+                      {label}
+                    </span>
+                    <button
+                      onClick={() => setTitle(on ? null : b.code)}
+                      disabled={busy}
+                      className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                        on
+                          ? "bg-violet-600 text-white"
+                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                      }`}
+                    >
+                      {on ? t("season.titleOn") : t("season.titleSet")}
+                    </button>
+                  </div>
+                );
+              })}
+              {data.selectedTitle && (
+                <button
+                  onClick={() => setTitle(null)}
+                  disabled={busy}
+                  className="self-start text-[11px] text-gray-400 hover:text-gray-600 mt-0.5"
+                >
+                  {t("season.titleClear")}
+                </button>
+              )}
             </div>
           )}
         </div>

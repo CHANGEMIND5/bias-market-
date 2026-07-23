@@ -200,10 +200,18 @@ export interface SeasonBadgeView {
   kind: string;
   rank: number;
   groupName: string | null;
+  code: string; // 칭호 코드 (선택용)
+}
+
+/** 시즌 배지 → 칭호 코드 */
+function badgeCode(b: { kind: string; seasonKey: string; groupId: string; rank: number }): string {
+  return b.kind === "CHAMPION"
+    ? `C:${b.seasonKey}:${b.rank}`
+    : `G:${b.seasonKey}:${b.groupId}`;
 }
 
 export async function getSeasonView(userId: string | null) {
-  const [lastSeason, myBadges] = await Promise.all([
+  const [lastSeason, myBadges, me] = await Promise.all([
     prisma.season.findFirst({
       where: { status: "closed" },
       orderBy: { seasonKey: "desc" },
@@ -215,6 +223,9 @@ export async function getSeasonView(userId: string | null) {
           take: 60,
         })
       : Promise.resolve([]),
+    userId
+      ? prisma.user.findUnique({ where: { id: userId }, select: { selectedTitle: true } })
+      : Promise.resolve(null),
   ]);
 
   let hallOfFame: any[] = [];
@@ -232,6 +243,7 @@ export async function getSeasonView(userId: string | null) {
     kind: b.kind,
     rank: b.rank,
     groupName: b.kind === "GROUP_TOP" ? GROUP_MAP[b.groupId]?.name ?? null : null,
+    code: badgeCode(b),
   }));
 
   return {
@@ -240,5 +252,27 @@ export async function getSeasonView(userId: string | null) {
     lastSeasonKey: lastSeason?.seasonKey ?? null,
     hallOfFame,
     myBadges: badges,
+    selectedTitle: (me as any)?.selectedTitle ?? null,
   };
+}
+
+/** 유저가 실제로 보유한 배지 코드인지 검증 후 칭호 설정 (null = 해제) */
+export async function setUserTitle(userId: string, code: string | null): Promise<boolean> {
+  if (code === null) {
+    await prisma.user.update({ where: { id: userId }, data: { selectedTitle: null } });
+    return true;
+  }
+  const parts = code.split(":");
+  let groupId: string;
+  if (parts[0] === "G" && parts[1] && parts[2]) groupId = parts.slice(2).join(":");
+  else if (parts[0] === "C" && parts[1] && parts[2]) groupId = `__champion_${parts[2]}__`;
+  else return false;
+
+  const owned = await prisma.seasonBadge.findFirst({
+    where: { userId, seasonKey: parts[1], groupId },
+    select: { id: true },
+  });
+  if (!owned) return false;
+  await prisma.user.update({ where: { id: userId }, data: { selectedTitle: code } });
+  return true;
 }

@@ -50,6 +50,22 @@ export function resolveLoungeStatus(
   return supporterCount >= SUPPORTER_TARGET ? "ACTIVE" : "LOCKED";
 }
 
+// ─── 칭호(시즌 배지) 코드 파싱 ───
+// "G:{seasonKey}:{groupId}" = 그룹 최대 보유자, "C:{seasonKey}:{rank}" = 시즌 챔피언
+export type ParsedTitle =
+  | { kind: "G"; seasonKey: string; groupId: string }
+  | { kind: "C"; seasonKey: string; rank: number };
+
+export function parseTitleCode(code: string | null | undefined): ParsedTitle | null {
+  if (!code) return null;
+  const parts = code.split(":");
+  if (parts[0] === "G" && parts[1] && parts[2])
+    return { kind: "G", seasonKey: parts[1], groupId: parts.slice(2).join(":") };
+  if (parts[0] === "C" && parts[1] && parts[2])
+    return { kind: "C", seasonKey: parts[1], rank: Number(parts[2]) };
+  return null;
+}
+
 export const RATE = {
   postPer10Min: 1,
   postPerDay: 10,
