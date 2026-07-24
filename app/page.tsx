@@ -6,7 +6,7 @@ import BadgesCard from "@/components/BadgesCard";
 import BattleCard from "@/components/BattleCard";
 import CollectionBadges from "@/components/CollectionBadges";
 import BiasDashboard from "@/components/BiasDashboard";
-import CommunityView from "@/components/CommunityView";
+import LoungeView from "@/components/LoungeView";
 import FanProfileCard from "@/components/FanProfileCard";
 import HistoryView from "@/components/HistoryView";
 import MarketNews from "@/components/MarketNews";
@@ -76,7 +76,7 @@ export default function Page() {
             </div>
           )}
           {view === "history" && <HistoryView />}
-          {view === "community" && <CommunityView />}
+          {view === "community" && <LoungeView />}
           {view === "missions" && <MissionsView />}
 
           {/* Footer disclaimer */}

@@ -88,18 +88,22 @@ const REPORT_REASONS = [
   "privacy", "manipulation", "inappropriate", "other",
 ] as const;
 
-export default function LoungeView({ group }: { group: Group }) {
+// group 없이 쓰면 전체 커뮤니티(scope=GLOBAL) 모드로 동작.
+export default function LoungeView({ group }: { group?: Group }) {
   const { loggedIn, isAdmin, showToast, state, toggleFavorite } = useStore();
   const { t } = useLang();
-  const gid = group.id;
+  const isGlobal = !group;
+  const gid = group?.id ?? null;
+  const scope: "GLOBAL" | "MARKET" = isGlobal ? "GLOBAL" : "MARKET";
 
   const [meta, setMeta] = useState<LoungeMeta | null>(null);
   const [posts, setPosts] = useState<PostItem[] | null>(null);
   const [filter, setFilter] = useState<Filter>("latest");
 
-  const fav = state.favorites.includes(gid);
+  const fav = gid ? state.favorites.includes(gid) : false;
 
   const loadMeta = useCallback(async () => {
+    if (!gid) return;
     try {
       const res = await fetch(`/api/lounge/${gid}`, { cache: "no-store" });
       if (res.ok) setMeta(await res.json());
@@ -110,17 +114,17 @@ export default function LoungeView({ group }: { group: Group }) {
 
   const loadPosts = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/posts?scope=MARKET&marketId=${gid}&filter=${filter}`,
-        { cache: "no-store" }
-      );
+      const url = isGlobal
+        ? `/api/posts?scope=GLOBAL&filter=${filter}`
+        : `/api/posts?scope=MARKET&marketId=${gid}&filter=${filter}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data.posts)) setPosts(data.posts);
     } catch {
       // keep last
     }
-  }, [gid, filter]);
+  }, [isGlobal, gid, filter]);
 
   useEffect(() => {
     loadMeta();
@@ -131,14 +135,27 @@ export default function LoungeView({ group }: { group: Group }) {
     return () => clearInterval(id);
   }, [loadPosts]);
 
+  // 전체 커뮤니티는 항상 열려 있음(ACTIVE), 라운지는 상태에 따름
+  const active = isGlobal || meta?.status === "ACTIVE";
+
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
       <div className="flex-1 min-w-0 flex flex-col gap-4">
-        <LoungeHeader group={group} meta={meta} fav={fav} onFav={() => toggleFavorite(gid)} />
+        {isGlobal ? (
+          <div
+            className="rounded-2xl p-5 text-white shadow-card"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#d946ef)" }}
+          >
+            <h1 className="text-lg font-extrabold drop-shadow">💬 {t("nav.community")}</h1>
+            <p className="text-[12px] text-white/85 drop-shadow mt-0.5">{t("comm.subtitle")}</p>
+          </div>
+        ) : (
+          <LoungeHeader group={group!} meta={meta} fav={fav} onFav={() => gid && toggleFavorite(gid)} />
+        )}
 
-        {meta?.status === "LOCKED" && <LockedCard meta={meta} />}
+        {!isGlobal && meta?.status === "LOCKED" && <LockedCard meta={meta} />}
 
-        {meta?.status === "ACTIVE" && (
+        {active && (
           <>
             <Composer group={group} onCreated={(p) => setPosts((ps) => [p, ...(ps ?? [])])} />
             <Filters value={filter} onChange={setFilter} />
@@ -154,7 +171,7 @@ export default function LoungeView({ group }: { group: Group }) {
         )}
       </div>
 
-      {/* 데스크톱 우측: 라운지 규칙 */}
+      {/* 데스크톱 우측: 규칙 */}
       <aside className="lg:w-72 shrink-0">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-4">
           <p className="text-sm font-bold">{t("lt.rulesTitle")}</p>
@@ -258,7 +275,7 @@ function Filters({ value, onChange }: { value: Filter; onChange: (f: Filter) => 
 function Composer({
   group, onCreated,
 }: {
-  group: Group;
+  group?: Group;
   onCreated: (p: PostItem) => void;
 }) {
   const { loggedIn, isAdmin, showToast } = useStore();
@@ -308,8 +325,8 @@ function Composer({
       const d = await sendJSON("/api/posts", {
         body: b,
         title: title.trim() || undefined,
-        scope: "MARKET",
-        marketId: group.id,
+        scope: group ? "MARKET" : "GLOBAL",
+        marketId: group ? group.id : undefined,
         postType: pollMode ? "POLL" : type,
         isNotice: asNotice,
         poll,
